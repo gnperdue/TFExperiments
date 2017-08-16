@@ -6,22 +6,22 @@ class MNISTLogReg:
         self.learning_rate = learning_rate
 
     def build_network(self, features, targets):
-        with tf.name_scope('io'):
+        with tf.variable_scope('io'):
             self.X = features
             self.Y = targets
 
         with tf.variable_scope('model'):
-            self.W = tf.Variable(
-                tf.random_normal(
+            self.W = tf.get_variable(
+                name='weights',
+                initializer=tf.random_normal(
                     shape=[784, 10], mean=0.0, stddev=0.01, dtype=tf.float32
-                ),
-                name='weights'
+                )
             )
-            self.b = tf.Variable(
-                tf.random_normal(
+            self.b = tf.get_variable(
+                name='bias',
+                initializer=tf.random_normal(
                     shape=[10], mean=0.0, stddev=0.01, dtype=tf.float32
-                ),
-                name='bias'
+                )
             )
             self.logits = tf.add(
                 tf.matmul(self.X, self.W), self.b, name='logits'
