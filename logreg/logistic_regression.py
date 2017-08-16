@@ -61,7 +61,7 @@ def train():
                         saver.save(sess, ckpt_dir, b_num)
                         LOGGER.info('     saved at iter %d' % b_num)
                         LOGGER.debug(' Weights [0, :10] = {}'.format(
-                            g.get_tensor_by_name('model/weights:0').eval()[0,:10]
+                            g.get_tensor_by_name('model/weights:0').eval()[0, :10]
                         ))
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Training stopped - queue is empty.')
@@ -112,7 +112,7 @@ def test_ckpt():
                     LOGGER.debug(' tnsr name = {}'.format(tnsr.name))
 
             LOGGER.debug(' Weights [0, :10] = {}'.format(
-                g.get_tensor_by_name('model/weights:0').eval()[0,:10]
+                g.get_tensor_by_name('model/weights:0').eval()[0, :10]
             ))
 
             average_loss = 0.0
@@ -172,18 +172,30 @@ def test_proto():
     tf.reset_default_graph()
     LOGGER.info('Starting testing via saved protobuf...')
 
-    g = utils_mnist.load_frozen_graph(TBOARD_DEST_DIR + '/frozen_model.pb')
+    with tf.Graph().as_default() as g:
 
-    with tf.Session(graph=g) as sess:
-        for tnsr in g.as_graph_def().node:
-            LOGGER.debug(' tnsr name = {}'.format(tnsr.name))
+        with tf.Session(graph=g) as sess:
 
-        LOGGER.info('Preparing to test model with %d parameters' %
-                    utils_mnist.get_number_of_trainable_parameters())
+            model = MNISTLogReg()
+            test_file = DATA_PATH + 'mnist_test.tfrecord.gz'
+            features_batch, targets_batch = batch_generator(
+                [test_file], batch_size=10, num_epochs=1
+            )
+            model.build_network(features_batch, targets_batch)
+            utils_mnist.load_frozen_graph(TBOARD_DEST_DIR + '/frozen_model.pb')
 
-        LOGGER.debug(' Weights [0, :10] = {}'.format(
-            g.get_tensor_by_name('model/weights:0').eval()[0,:10]
-        ))
+            for tnsr in g.as_graph_def().node:
+                LOGGER.debug(' tnsr name = {}'.format(tnsr.name))
+
+            LOGGER.info('Preparing to test model with %d parameters' %
+                        utils_mnist.get_number_of_trainable_parameters())
+
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+
+            LOGGER.debug(' Weights [0, :10] = {}'.format(
+                g.get_tensor_by_name('model/weights:0').eval()[0, :10]
+            ))
 
     print('Finished testing via saved protobuf...')
     LOGGER.info('Finished testing via saved protobuf...')
