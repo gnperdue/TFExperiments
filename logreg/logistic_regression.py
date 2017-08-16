@@ -176,13 +176,13 @@ def test_proto():
 
         with tf.Session(graph=g) as sess:
 
+            utils_mnist.load_frozen_graph(TBOARD_DEST_DIR + '/frozen_model.pb')
             model = MNISTLogReg()
             test_file = DATA_PATH + 'mnist_test.tfrecord.gz'
             features_batch, targets_batch = batch_generator(
                 [test_file], batch_size=10, num_epochs=1
             )
             model.build_network(features_batch, targets_batch)
-            utils_mnist.load_frozen_graph(TBOARD_DEST_DIR + '/frozen_model.pb')
 
             for tnsr in g.as_graph_def().node:
                 LOGGER.debug(' tnsr name = {}'.format(tnsr.name))
@@ -196,6 +196,55 @@ def test_proto():
             LOGGER.debug(' Weights [0, :10] = {}'.format(
                 g.get_tensor_by_name('model/weights:0').eval()[0, :10]
             ))
+
+            average_loss = 0.0
+            total_correct_preds = 0
+
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
+            n_processed = 0
+            try:
+                for i in range(5):
+                    loss_batch, logits_batch, Y_batch = sess.run(
+                        [model.loss, model.logits, targets_batch]
+                    )
+                    n_processed += 10
+                    average_loss += loss_batch
+                    preds = tf.nn.softmax(logits_batch)
+                    correct_preds = tf.equal(
+                        tf.argmax(preds, 1), tf.argmax(Y_batch, 1)
+                    )
+                    LOGGER.info('   preds   = \n{}'.format(
+                        tf.argmax(preds, 1).eval()
+                    ))
+                    LOGGER.info('   Y_batch = \n{}'.format(
+                        np.argmax(Y_batch, 1)
+                    ))
+                    accuracy = tf.reduce_sum(
+                        tf.cast(correct_preds, tf.float32)
+                    )
+                    total_correct_preds += sess.run(accuracy)
+                    LOGGER.info('  batch {} loss = {} for nproc {}'.format(
+                        i, loss_batch, n_processed
+                    ))
+
+                    LOGGER.info("  total_correct_preds = {}".format(
+                        total_correct_preds
+                    ))
+                    LOGGER.info("  n_processed = {}".format(
+                        n_processed
+                    ))
+                    LOGGER.info(" Accuracy {0}".format(
+                        total_correct_preds / n_processed
+                    ))
+            except tf.errors.OutOfRangeError:
+                LOGGER.info('Testing stopped - queue is empty.')
+            except Exception as e:
+                LOGGER.error(e)
+            finally:
+                coord.request_stop()
+                coord.join(threads)
 
     print('Finished testing via saved protobuf...')
     LOGGER.info('Finished testing via saved protobuf...')
