@@ -8,6 +8,7 @@ import logging
 from model_mnist import MNISTLogReg
 from tfrecord_mnist import batch_generator
 from tfrecord_mnist import DATA_PATH
+import utils_mnist
 
 logging.basicConfig(
     filename='tmp_logreg_log.txt', level=logging.DEBUG,
@@ -59,6 +60,9 @@ def train():
                         average_loss = 0.0
                         saver.save(sess, ckpt_dir, b_num)
                         LOGGER.info('     saved at iter %d' % b_num)
+                        LOGGER.debug(' Weights [0, :10] = {}'.format(
+                            g.get_tensor_by_name('model/weights:0').eval()[0,:10]
+                        ))
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Training stopped - queue is empty.')
             except Exception as e:
@@ -69,13 +73,17 @@ def train():
 
         writer.close()
 
+    out_graph = utils_mnist.freeze_graph(
+        TBOARD_DEST_DIR, ['model/logits']
+    )
+    LOGGER.info('Saved graph to {}'.format(out_graph))
     print('Finished training...')
     LOGGER.info('Finished training...')
 
 
 def test_ckpt():
     tf.reset_default_graph()
-    LOGGER.info('Starting testing...')
+    LOGGER.info('Starting testing via checkpoint...')
 
     ckpt_dir = TBOARD_DEST_DIR + '/checkpoints'
 
@@ -102,6 +110,10 @@ def test_ckpt():
                 LOGGER.info('Restored session from {}'.format(ckpt_dir))
                 for tnsr in g.as_graph_def().node:
                     LOGGER.debug(' tnsr name = {}'.format(tnsr.name))
+
+            LOGGER.debug(' Weights [0, :10] = {}'.format(
+                g.get_tensor_by_name('model/weights:0').eval()[0,:10]
+            ))
 
             average_loss = 0.0
             total_correct_preds = 0
@@ -152,13 +164,35 @@ def test_ckpt():
                 coord.request_stop()
                 coord.join(threads)
 
-    print('Finished testing...')
-    LOGGER.info('Finished testing...')
+    print('Finished testing via checkpoint...')
+    LOGGER.info('Finished testing via checkpoint...')
 
+
+def test_proto():
+    tf.reset_default_graph()
+    LOGGER.info('Starting testing via saved protobuf...')
+
+    g = utils_mnist.load_frozen_graph(TBOARD_DEST_DIR + '/frozen_model.pb')
+
+    with tf.Session(graph=g) as sess:
+        for tnsr in g.as_graph_def().node:
+            LOGGER.debug(' tnsr name = {}'.format(tnsr.name))
+
+        LOGGER.info('Preparing to test model with %d parameters' %
+                    utils_mnist.get_number_of_trainable_parameters())
+
+        LOGGER.debug(' Weights [0, :10] = {}'.format(
+            g.get_tensor_by_name('model/weights:0').eval()[0,:10]
+        ))
+
+    print('Finished testing via saved protobuf...')
+    LOGGER.info('Finished testing via saved protobuf...')
+        
 
 if __name__ == '__main__':
     train()
     test_ckpt()
+    test_proto()
 
 
 
