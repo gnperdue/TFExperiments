@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import h5py
 import logging
+import os
 
 LOGGER = logging.getLogger(__name__)
 DATA_PATH = os.environ['HOME'] + '/Dropbox/Data/RandomData/hdf5/'
