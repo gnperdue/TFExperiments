@@ -94,8 +94,8 @@ def train_tfrec(n_batches):
                 for b_num in range(0, n_batches):
                     if (b_num + 1) % 5 == 0:
                         # validation
-                        loss_batch, logits_batch, Y_batch = sess.run(
-                            [model.loss, model.logits, targets],
+                        loss_batch, logits_batch, Y_batch, summary = sess.run(
+                            [model.loss, model.logits, targets, model.valid_summary_op],
                             feed_dict={cntr: (b_num + 1)}
                         )
                         LOGGER.info(
@@ -124,10 +124,11 @@ def train_tfrec(n_batches):
                                 'model/weights:0'
                             ).eval()[300, :10]
                         ))
+                        writer.add_summary(summary, global_step=b_num)
                     else:
                         # regular training
-                        _, loss_batch = sess.run(
-                            [model.optimizer, model.loss],
+                        _, loss_batch, summary = sess.run(
+                            [model.optimizer, model.loss, model.train_summary_op],
                             feed_dict={cntr: (b_num + 1)}
                         )
                         LOGGER.info(
@@ -136,6 +137,7 @@ def train_tfrec(n_batches):
                             )
                         )
                         saver.save(sess, ckpt_dir, b_num)
+                        writer.add_summary(summary, global_step=b_num)
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Training stopped - queue is empty.')
             except Exception as e:
