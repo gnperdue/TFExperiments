@@ -9,7 +9,6 @@ import os
 import logging
 
 from model_mnist import MNISTLogReg
-from hdf5_mnist import MNISTHDF5Reader
 from tfrecord_mnist import batch_generator
 import utils_mnist
 
@@ -44,46 +43,99 @@ def train_tfrec(n_batches):
             features_valid, targets_valid = batch_generator(
                 [valid_file], stage_name='valid', batch_size=128, num_epochs=1000
             )
+
+            def get_features_train():
+                return features_train
+
+            def get_features_valid():
+                return features_valid
+
+            def get_targets_train():
+                return targets_train
+
+            def get_targets_valid():
+                return targets_valid
+
+            cntr = tf.placeholder(tf.int32, shape=(), name='batch_counter')
+            pfrq = tf.constant(5, dtype=tf.int32, name='const_val_mod_nmbr')
+            tfzo = tf.constant(0, dtype=tf.int32, name='const_zero')
+            pred = tf.equal(tf.mod(cntr, pfrq), tfzo, name='train_valid_pred')
+            features = tf.cond(
+                pred,
+                get_features_train,
+                get_features_valid,
+                name='features_selection'
+            )
+            targets = tf.cond(
+                pred,
+                get_targets_train,
+                get_targets_valid,
+                name='targets_selection'
+            )
         
-            model.build_network(features_train, targets_train)
+            model.build_network(features, targets)
             writer = tf.summary.FileWriter(run_dest_dir)
             saver = tf.train.Saver()
 
             sess.run(tf.global_variables_initializer())
             sess.run(tf.local_variables_initializer())
 
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+                LOGGER.info('Restored session from {}'.format(ckpt_dir))
+
             writer.add_graph(sess.graph)
-            average_loss = 0.0
 
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
             
             try:
                 for b_num in range(0, n_batches):
-                    _, loss_batch = sess.run([model.optimizer, model.loss])
-                    average_loss += loss_batch
                     if (b_num + 1) % 5 == 0:
+                        # validation
+                        loss_batch, logits_batch, Y_batch = sess.run(
+                            [model.loss, model.logits, targets],
+                            feed_dict={cntr: (b_num + 1)}
+                        )
                         LOGGER.info(
-                            ' Loss at step {}: {:5.1f}; Avg loss {:5.1f}'.format(
-                                b_num + 1, loss_batch, average_loss / 5
+                            '  Valid loss @step {}: {:5.1f}'.format(
+                                b_num, loss_batch
+                            )
+                        )
+                        preds = tf.nn.softmax(logits_batch)
+                        correct_preds = tf.equal(
+                            tf.argmax(preds, 1), tf.argmax(Y_batch, 1)
+                        )
+                        LOGGER.info('   preds   = \n{}'.format(
+                            tf.argmax(preds, 1).eval()
                         ))
-                        average_loss = 0.0
+                        LOGGER.info('   Y_batch = \n{}'.format(
+                            np.argmax(Y_batch, 1)
+                        ))
+                        accuracy = tf.reduce_sum(
+                            tf.cast(correct_preds, tf.float32)
+                        )
+                        LOGGER.info('    accuracy = {}'.format(
+                            accuracy.eval() / Y_batch.shape[0]
+                        ))
+                        LOGGER.debug('    Weights [300, :10] = {}'.format(
+                            g.get_tensor_by_name(
+                                'model/weights:0'
+                            ).eval()[300, :10]
+                        ))
+                    else:
+                        # regular training
+                        _, loss_batch = sess.run(
+                            [model.optimizer, model.loss],
+                            feed_dict={cntr: (b_num + 1)}
+                        )
+                        LOGGER.info(
+                            ' Loss @step {}: {:5.1f}'.format(
+                                b_num, loss_batch
+                            )
+                        )
                         saver.save(sess, ckpt_dir, b_num)
-                        LOGGER.info('     saved at iter %d' % b_num)
-                        LOGGER.debug(' Weights [0, :10] = {}'.format(
-                            g.get_tensor_by_name('model/weights:0').eval()[0, :10]
-                        ))
-                        model.reassign_features_and_targets(
-                            features_valid, targets_valid
-                        )
-                        [loss_batch] = sess.run([model.loss])
-                        LOGGER.info(
-                            '  Valid loss: {:5.1f}'.format(
-                                loss_batch,
-                        ))                        
-                        model.reassign_features_and_targets(
-                            features_train, targets_train
-                        )
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Training stopped - queue is empty.')
             except Exception as e:
@@ -102,7 +154,7 @@ def train_tfrec(n_batches):
     LOGGER.info('Finished training...')
 
 
-def test_tfrec():
+def test_tfrec(n_batches=5):
     from tfrecord_mnist import DATA_PATH
 
     tf.reset_default_graph()
@@ -134,8 +186,8 @@ def test_tfrec():
                 for tnsr in g.as_graph_def().node:
                     LOGGER.debug(' tnsr name = {}'.format(tnsr.name))
 
-            LOGGER.debug(' Weights [0, :10] = {}'.format(
-                g.get_tensor_by_name('model/weights:0').eval()[0, :10]
+            LOGGER.debug(' Weights [300, :10] = {}'.format(
+                g.get_tensor_by_name('model/weights:0').eval()[300, :10]
             ))
 
             average_loss = 0.0
@@ -146,7 +198,7 @@ def test_tfrec():
 
             n_processed = 0
             try:
-                for i in range(5):
+                for i in range(n_batches):
                     loss_batch, logits_batch, Y_batch = sess.run(
                         [model.loss, model.logits, targets_batch]
                     )
@@ -201,4 +253,4 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
 
     train_tfrec(n_batches=options.n_batches)
-    test_tfrec()
+    test_tfrec(n_batches=10)
