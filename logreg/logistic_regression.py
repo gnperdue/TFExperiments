@@ -1,3 +1,6 @@
+"""
+Simple logistic regression to test TF framework APIs.
+"""
 import tensorflow as tf
 import numpy as np
 
@@ -19,7 +22,7 @@ LOGGER = logging.getLogger(__name__)
 TBOARD_DEST_DIR = '/tmp/logreg'
 
 
-def train():
+def train(n_batches):
     tf.reset_default_graph()
     ckpt_dir = TBOARD_DEST_DIR + '/checkpoints'
     run_dest_dir = TBOARD_DEST_DIR + '/%d' % time.time()
@@ -50,7 +53,7 @@ def train():
             threads = tf.train.start_queue_runners(coord=coord)
             
             try:
-                for b_num in range(0, 20):
+                for b_num in range(0, n_batches):
                     _, loss_batch = sess.run([model.optimizer, model.loss])
                     average_loss += loss_batch
                     if (b_num + 1) % 5 == 0:
@@ -251,9 +254,14 @@ def test_proto():
         
 
 if __name__ == '__main__':
-    train()
+    from optparse import OptionParser
+    parser = OptionParser(usage=__doc__)
+    parser.add_option('-n', '--n_batches', dest='n_batches',
+                      help='Number of training batches', metavar='NBATCH',
+                      default=20, type='int')
+
+    (options, args) = parser.parse_args()
+
+    train(n_batches=options.n_batches)
     test_ckpt()
     test_proto()
-
-
-
