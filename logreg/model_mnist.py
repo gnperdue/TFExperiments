@@ -4,6 +4,18 @@ import tensorflow as tf
 class MNISTLogReg:
     def __init__(self, learning_rate=0.01):
         self.learning_rate = learning_rate
+        self.loss = None
+        self.logits = None
+
+    def _create_summaries(self):
+        with tf.name_scope('summaries/train'):
+            tf.summary.scalar('loss', self.loss)
+            tf.summary.histogram('histogram_loss', self.loss)
+            self.train_summary_op = tf.summary.merge_all()
+        with tf.name_scope('summaries/valid'):
+            tf.summary.scalar('loss', self.loss)
+            tf.summary.histogram('histogram_loss', self.loss)
+            self.valid_summary_op = tf.summary.merge_all()
 
     def build_network(self, features, targets):
         with tf.variable_scope('io'):
@@ -41,7 +53,4 @@ class MNISTLogReg:
                 learning_rate=self.learning_rate
             ).minimize(self.loss)
 
-    def reassign_features_and_targets(self, features, targets):
-        with tf.variable_scope('io'):
-            self.X = features
-            self.Y = targets
+        self._create_summaries()
