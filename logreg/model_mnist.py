@@ -40,3 +40,8 @@ class MNISTLogReg:
             self.optimizer = tf.train.GradientDescentOptimizer(
                 learning_rate=self.learning_rate
             ).minimize(self.loss)
+
+    def reassign_features_and_targets(self, features, targets):
+        with tf.variable_scope('io'):
+            self.X = features
+            self.Y = targets
