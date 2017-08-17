@@ -9,8 +9,8 @@ import os
 import logging
 
 from model_mnist import MNISTLogReg
+from hdf5_mnist import MNISTHDF5Reader
 from tfrecord_mnist import batch_generator
-from tfrecord_mnist import DATA_PATH
 import utils_mnist
 
 logging.basicConfig(
@@ -22,7 +22,9 @@ LOGGER = logging.getLogger(__name__)
 TBOARD_DEST_DIR = '/tmp/logreg'
 
 
-def train(n_batches):
+def train_tfrec(n_batches):
+    from tfrecord_mnist import DATA_PATH
+
     tf.reset_default_graph()
     ckpt_dir = TBOARD_DEST_DIR + '/checkpoints'
     run_dest_dir = TBOARD_DEST_DIR + '/%d' % time.time()
@@ -84,7 +86,9 @@ def train(n_batches):
     LOGGER.info('Finished training...')
 
 
-def test_ckpt():
+def test_tfrec():
+    from tfrecord_mnist import DATA_PATH
+
     tf.reset_default_graph()
     LOGGER.info('Starting testing via checkpoint...')
 
@@ -180,5 +184,5 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
-    train(n_batches=options.n_batches)
-    test_ckpt()
+    train_tfrec(n_batches=options.n_batches)
+    test_tfrec()
