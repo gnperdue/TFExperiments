@@ -45,8 +45,10 @@ def tfrecord_to_graph_ops(filenames_list, num_epochs=1):
         return features, targets
 
 
-def batch_generator(filenames_list, batch_size=BATCH_SIZE, num_epochs=1):
-    with tf.variable_scope('batchgen'):
+def batch_generator(
+        filenames_list, stage_name='train', batch_size=BATCH_SIZE, num_epochs=1
+):
+    with tf.variable_scope(stage_name + '/batchgen'):
         features, targets = tfrecord_to_graph_ops(filenames_list, num_epochs)
         min_after_dequeue = 3 * batch_size
         capacity = 20 * batch_size
