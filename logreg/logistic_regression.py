@@ -37,11 +37,15 @@ def train_tfrec(n_batches):
 
             model = MNISTLogReg()
             train_file = DATA_PATH + 'mnist_train.tfrecord.gz'
-            features_batch, targets_batch = batch_generator(
-                [train_file], batch_size=128, num_epochs=1
+            features_train, targets_train = batch_generator(
+                [train_file], stage_name='train', batch_size=128, num_epochs=1
+            )
+            valid_file = DATA_PATH + 'mnist_valid.tfrecord.gz'
+            features_valid, targets_valid = batch_generator(
+                [valid_file], stage_name='valid', batch_size=128, num_epochs=1000
             )
         
-            model.build_network(features_batch, targets_batch)
+            model.build_network(features_train, targets_train)
             writer = tf.summary.FileWriter(run_dest_dir)
             saver = tf.train.Saver()
 
@@ -59,8 +63,9 @@ def train_tfrec(n_batches):
                     _, loss_batch = sess.run([model.optimizer, model.loss])
                     average_loss += loss_batch
                     if (b_num + 1) % 5 == 0:
-                        LOGGER.info('  Avg loss at step {}: {:5.1f}'.format(
-                            b_num + 1, average_loss / 5
+                        LOGGER.info(
+                            ' Loss at step {}: {:5.1f}; Avg loss {:5.1f}'.format(
+                                b_num + 1, loss_batch, average_loss / 5
                         ))
                         average_loss = 0.0
                         saver.save(sess, ckpt_dir, b_num)
@@ -68,6 +73,17 @@ def train_tfrec(n_batches):
                         LOGGER.debug(' Weights [0, :10] = {}'.format(
                             g.get_tensor_by_name('model/weights:0').eval()[0, :10]
                         ))
+                        model.reassign_features_and_targets(
+                            features_valid, targets_valid
+                        )
+                        [loss_batch] = sess.run([model.loss])
+                        LOGGER.info(
+                            '  Valid loss: {:5.1f}'.format(
+                                loss_batch,
+                        ))                        
+                        model.reassign_features_and_targets(
+                            features_train, targets_train
+                        )
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Training stopped - queue is empty.')
             except Exception as e:
@@ -101,7 +117,7 @@ def test_tfrec():
             model = MNISTLogReg()
             test_file = DATA_PATH + 'mnist_test.tfrecord.gz'
             features_batch, targets_batch = batch_generator(
-                [test_file], batch_size=10, num_epochs=1
+                [test_file], stage_name='test', batch_size=10, num_epochs=1
             )
 
             model.build_network(features_batch, targets_batch)
