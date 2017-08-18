@@ -86,16 +86,18 @@ def train_tfrec(n_batches):
                 LOGGER.info('Restored session from {}'.format(ckpt_dir))
 
             writer.add_graph(sess.graph)
+            initial_step = model.global_step.eval()
+            LOGGER.info('initial step = {}'.format(initial_step))
 
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
             
             try:
-                for b_num in range(0, n_batches):
+                for b_num in range(initial_step, initial_step + n_batches):
                     if (b_num + 1) % 5 == 0:
                         # validation
                         loss_batch, logits_batch, Y_batch, summary = sess.run(
-                            [model.loss, model.logits, targets, model.valid_summary_op],
+                            [model.loss, model.logits, model.Y, model.valid_summary_op],
                             feed_dict={cntr: (b_num + 1)}
                         )
                         LOGGER.info(
@@ -124,6 +126,7 @@ def train_tfrec(n_batches):
                                 'model/weights:0'
                             ).eval()[300, :10]
                         ))
+                        saver.save(sess, ckpt_dir, b_num)
                         writer.add_summary(summary, global_step=b_num)
                     else:
                         # regular training
@@ -136,7 +139,6 @@ def train_tfrec(n_batches):
                                 b_num, loss_batch
                             )
                         )
-                        saver.save(sess, ckpt_dir, b_num)
                         writer.add_summary(summary, global_step=b_num)
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Training stopped - queue is empty.')

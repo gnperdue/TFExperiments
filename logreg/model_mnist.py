@@ -6,6 +6,7 @@ class MNISTLogReg:
         self.learning_rate = learning_rate
         self.loss = None
         self.logits = None
+        self.global_step = None
 
     def _create_summaries(self):
         with tf.name_scope('summaries/train'):
@@ -18,6 +19,11 @@ class MNISTLogReg:
             self.valid_summary_op = tf.summary.merge_all()
 
     def build_network(self, features, targets):
+
+        self.global_step = tf.Variable(
+            0, dtype=tf.int32, trainable=False, name='global_step'
+        )
+
         with tf.variable_scope('io'):
             self.X = features
             self.Y = targets
@@ -51,6 +57,6 @@ class MNISTLogReg:
         with tf.variable_scope('training'):
             self.optimizer = tf.train.GradientDescentOptimizer(
                 learning_rate=self.learning_rate
-            ).minimize(self.loss)
+            ).minimize(self.loss, global_step=self.global_step)
 
         self._create_summaries()
