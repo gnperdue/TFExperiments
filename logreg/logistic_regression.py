@@ -56,23 +56,23 @@ def train_tfrec(n_batches):
             def get_targets_valid():
                 return targets_valid
 
-            cntr = tf.placeholder(tf.int32, shape=(), name='batch_counter')
-            pfrq = tf.constant(5, dtype=tf.int32, name='const_val_mod_nmbr')
-            tfzo = tf.constant(0, dtype=tf.int32, name='const_zero')
-            pred = tf.equal(tf.mod(cntr, pfrq), tfzo, name='train_valid_pred')
+            with tf.variable_scope('pipeline_control'):
+                use_valid = tf.placeholder(
+                    tf.bool, shape=(), name='train_val_batch_logic'
+                )
+
             features = tf.cond(
-                pred,
-                get_features_train,
+                use_valid,
                 get_features_valid,
+                get_features_train,
                 name='features_selection'
             )
             targets = tf.cond(
-                pred,
-                get_targets_train,
+                use_valid,
                 get_targets_valid,
+                get_targets_train,
                 name='targets_selection'
-            )
-        
+            )        
             model.build_network(features, targets)
             writer = tf.summary.FileWriter(run_dest_dir)
             saver = tf.train.Saver()
@@ -94,21 +94,43 @@ def train_tfrec(n_batches):
             
             try:
                 for b_num in range(initial_step, initial_step + n_batches):
+                    # regular training
+                    _, loss_batch, summary_t = sess.run(
+                        [model.optimizer, model.loss, model.train_summary_op],
+                        feed_dict={use_valid: False}
+                    )
+                    LOGGER.info(
+                        ' Loss @step {}: {:5.1f}'.format(
+                            b_num, loss_batch
+                        )
+                    )
+                    writer.add_summary(summary_t, global_step=b_num)
                     if (b_num + 1) % 5 == 0:
                         # validation
-                        loss_batch, logits_batch, Y_batch, summary = sess.run(
-                            [model.loss, model.logits, model.Y, model.valid_summary_op],
-                            feed_dict={cntr: (b_num + 1)}
-                        )
+                        loss_batch, logits_batch, Y_batch, summary_v, reg_loss = \
+                            sess.run(
+                                [model.loss,
+                                 model.logits,
+                                 model.Y,
+                                 model.valid_summary_op,
+                                 model.regularization_losses],
+                                feed_dict={use_valid: True}
+                            )
                         LOGGER.info(
-                            '  Valid loss @step {}: {:5.1f}'.format(
-                                b_num, loss_batch
+                            '  Valid loss @step {}: {:5.1f} (reg: {:5.1f}'.format(
+                                b_num, loss_batch, reg_loss
                             )
                         )
+                        LOGGER.info('   raw preds   = \n{}'.format(
+                            logits_batch
+                        ))
                         preds = tf.nn.softmax(logits_batch)
                         correct_preds = tf.equal(
                             tf.argmax(preds, 1), tf.argmax(Y_batch, 1)
                         )
+                        LOGGER.info('   probs   = \n{}'.format(
+                            preds.eval()
+                        ))
                         LOGGER.info('   preds   = \n{}'.format(
                             tf.argmax(preds, 1).eval()
                         ))
@@ -127,19 +149,7 @@ def train_tfrec(n_batches):
                             ).eval()[300, :10]
                         ))
                         saver.save(sess, ckpt_dir, b_num)
-                        writer.add_summary(summary, global_step=b_num)
-                    else:
-                        # regular training
-                        _, loss_batch, summary = sess.run(
-                            [model.optimizer, model.loss, model.train_summary_op],
-                            feed_dict={cntr: (b_num + 1)}
-                        )
-                        LOGGER.info(
-                            ' Loss @step {}: {:5.1f}'.format(
-                                b_num, loss_batch
-                            )
-                        )
-                        writer.add_summary(summary, global_step=b_num)
+                        writer.add_summary(summary_v, global_step=b_num)
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Training stopped - queue is empty.')
             except Exception as e:
