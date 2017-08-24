@@ -15,6 +15,8 @@ class MNISTLogReg:
         self.logits = None
         self.global_step = None
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
+        # dropout not used here, but kept for API uniformity
+        self.dropout_keep_prob = None
 
     def _create_summaries(self):
         base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
@@ -23,7 +25,13 @@ class MNISTLogReg:
             train_histo_loss = tf.summary.histogram(
                 'histogram_loss', self.loss
             )
-            train_summaries = [train_loss, train_histo_loss]
+            train_reg_loss = tf.summary.scalar(
+                'reg_loss', self.regularization_losses
+            )
+            train_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+            train_summaries = [
+                train_loss, train_histo_loss, train_reg_loss, train_accuracy
+            ]
             train_summaries.extend(base_summaries)
             self.train_summary_op = tf.summary.merge(train_summaries)
         with tf.name_scope('summaries/valid'):
@@ -31,12 +39,21 @@ class MNISTLogReg:
             valid_histo_loss = tf.summary.histogram(
                 'histogram_loss', self.loss
             )
-            valid_summaries = [valid_loss, valid_histo_loss]
+            valid_reg_loss = tf.summary.scalar(
+                'reg_loss', self.regularization_losses
+            )
+            valid_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+            valid_summaries = [
+                valid_loss, valid_histo_loss, valid_reg_loss, valid_accuracy
+            ]
             valid_summaries.extend(base_summaries)
             self.valid_summary_op = tf.summary.merge(valid_summaries)
 
     def _build_network(self, features):
 
+        self.dropout_keep_prob = tf.placeholder(
+            tf.float32, name='dropout_keep_prob'
+        )
         self.global_step = tf.Variable(
             0, dtype=tf.int32, trainable=False, name='global_step'
         )
@@ -124,6 +141,7 @@ class MNISTConvNet:
         self.logits = None
         self.global_step = None
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
+        self.dropout_keep_prob = None
 
     def _create_summaries(self):
         base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
@@ -132,7 +150,8 @@ class MNISTConvNet:
             train_histo_loss = tf.summary.histogram(
                 'histogram_loss', self.loss
             )
-            train_summaries = [train_loss, train_histo_loss]
+            train_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+            train_summaries = [train_loss, train_histo_loss, train_accuracy]
             train_summaries.extend(base_summaries)
             self.train_summary_op = tf.summary.merge(train_summaries)
         with tf.name_scope('summaries/valid'):
@@ -140,12 +159,16 @@ class MNISTConvNet:
             valid_histo_loss = tf.summary.histogram(
                 'histogram_loss', self.loss
             )
-            valid_summaries = [valid_loss, valid_histo_loss]
+            valid_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+            valid_summaries = [valid_loss, valid_histo_loss, valid_accuracy]
             valid_summaries.extend(base_summaries)
             self.valid_summary_op = tf.summary.merge(valid_summaries)
 
     def _build_network(self, features):
 
+        self.dropout_keep_prob = tf.placeholder(
+            tf.float32, name='dropout_keep_prob'
+        )
         self.global_step = tf.Variable(
             0, dtype=tf.int32, trainable=False, name='global_step'
         )
@@ -249,7 +272,7 @@ class MNISTConvNet:
                 )
                 # apply dropout
                 self.fc = tf.nn.dropout(
-                    self.fc, self.dropout, name='relu_dropout'
+                    self.fc, self.dropout_keep_prob, name='relu_dropout'
                 )
 
             with tf.variable_scope('softmax_linear'):
