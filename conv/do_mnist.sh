@@ -10,8 +10,8 @@ VALIDATION="--do_validaton"
 TESTING="--nodo_testing"
 TESTING="--do_testing"
 
-CONV="--do_conv"
 CONV="--nodo_conv"
+CONV="--do_conv"
 
 # data, log, and model logistics
 BASEP="/Users/gnperdue/Documents/MINERvA/AI/mnist_tf"
@@ -35,13 +35,13 @@ python run_mnist.py \
   $TRAINING $VALIDATION $TESTING
 EOF
 
-# python run_mnist.py \
-#   $CONV \
-#   --compression gz \
-#   --data_dir $DATADIR \
-#   --file_root $FILEPAT \
-#   --model_dir $MODELDIR \
-#   --log_name $LOGFILE $LOGLEVEL \
-#   $TRAINING $VALIDATION $TESTING
+python run_mnist.py \
+  $CONV \
+  --compression gz \
+  --data_dir $DATADIR \
+  --file_root $FILEPAT \
+  --model_dir $MODELDIR \
+  --log_name $LOGFILE $LOGLEVEL \
+  $TRAINING $VALIDATION $TESTING
 
 echo "Job finished "`date`""
