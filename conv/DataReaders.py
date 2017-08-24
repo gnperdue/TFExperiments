@@ -90,7 +90,7 @@ class MNISTDataReader:
 
     def shuffle_batch_generator(self, num_epochs=1):
         with tf.variable_scope(self.name+'_shufflebatch_gen'):
-            features, targets = self._tfrecord_to_graph_ops_et(num_epochs)
+            features, targets = self._tfrecord_to_graph_ops(num_epochs)
             min_after_dequeue = 3 * self.batch_size
             capacity = 10 * self.batch_size
             features_batch, targets_batch = tf.train.shuffle_batch(

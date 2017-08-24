@@ -25,7 +25,7 @@ MODELDIR="${BASEP}/models/${NCLASS}/${MODEL_CODE}"
 
 # show what we will do...
 cat << EOF
-pythonrun_mnist.py \
+python run_mnist.py \
   $CONV \
   --compression gz \
   --data_dir $DATADIR \
@@ -35,13 +35,13 @@ pythonrun_mnist.py \
   $TRAINING $VALIDATION $TESTING
 EOF
 
-python run_mnist.py \
-  $CONV \
-  --compression gz \
-  --data_dir $DATADIR \
-  --file_root $FILEPAT \
-  --model_dir $MODELDIR \
-  --log_name $LOGFILE $LOGLEVEL \
-  $TRAINING $VALIDATION $TESTING
+# python run_mnist.py \
+#   $CONV \
+#   --compression gz \
+#   --data_dir $DATADIR \
+#   --file_root $FILEPAT \
+#   --model_dir $MODELDIR \
+#   --log_name $LOGFILE $LOGLEVEL \
+#   $TRAINING $VALIDATION $TESTING
 
 echo "Job finished "`date`""

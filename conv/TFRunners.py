@@ -97,7 +97,7 @@ class TFRunnerCategorical:
                     compression=self.file_compression
                 )
                 targets_train, features_train = \
-                    self._prep_targets_and_features_minerva(
+                    self._prep_targets_and_features(
                         train_reader.shuffle_batch_generator,
                         self.num_epochs
                     )
@@ -268,7 +268,7 @@ class TFRunnerCategorical:
                     compression=self.file_compression
                 )
                 targets, features = \
-                    self._prep_targets_and_features_minerva(
+                    self._prep_targets_and_features(
                         data_reader.batch_generator,
                         self.num_epochs
                     )

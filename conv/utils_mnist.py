@@ -24,7 +24,7 @@ def make_default_run_params_dict():
 
 def make_default_train_params_dict():
     train_params_dict = {}
-    train_params_dict['LEARNING_RATE'] = 0.0001
+    train_params_dict['LEARNING_RATE'] = 0.01
     train_params_dict['BATCH_SIZE'] = BATCH_SIZE
     train_params_dict['NUM_EPOCHS'] = 1
     train_params_dict['MOMENTUM'] = 0.9

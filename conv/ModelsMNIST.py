@@ -97,7 +97,7 @@ class MNISTLogReg:
                     learning_rate)
         with tf.variable_scope('training'):
             self.optimizer = tf.train.GradientDescentOptimizer(
-                learning_rate=self.learning_rate
+                learning_rate=learning_rate
             ).minimize(self.loss, global_step=self.global_step)
 
     def prepare_for_inference(self, features):
