@@ -86,12 +86,15 @@ def main(argv=None):
         run_params_dict=run_params_dict,
         train_params_dict=train_params_dict,
     )
+    do_validation = FLAGS.do_validation
+    is_image = FLAGS.do_conv
+
     if FLAGS.do_training:
-        runner.run_training(do_validation=FLAGS.do_validation, short=short)
+        runner.run_training(
+            do_validation=do_validation, short=short, is_image=is_image
+        )
     if FLAGS.do_testing:
-        runner.run_testing(short=short)
-    if FLAGS.do_prediction:
-        runner.run_prediction(short=short)
+        runner.run_testing(short=short, is_image=is_image)
 
 
 if __name__ == '__main__':
