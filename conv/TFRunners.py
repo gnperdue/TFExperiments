@@ -82,8 +82,8 @@ class TFRunnerCategorical:
         with tf.Graph().as_default() as g:
 
             # n_batches: control this with num_epochs
-            n_batches = 10 if short else int(1e9)
-            save_every_n_batch = 5 if short else self.save_freq
+            n_batches = 100 if short else int(1e9)
+            save_every_n_batch = 10 if short else self.save_freq
             LOGGER.info(' Processing {} batches, saving every {}...'.format(
                 n_batches, save_every_n_batch
             ))
@@ -197,10 +197,21 @@ class TFRunnerCategorical:
                         )
                         if (b_num + 1) % save_every_n_batch == 0:
                             # validation
-                            loss, accuracy, logits, targs, summary_v = \
+                            # loss, accuracy, logits, targs, summary_v = \
+                            #     sess.run(
+                            #         [self.model.loss,
+                            #          self.model.accuracy,
+                            #          self.model.logits,
+                            #          self.model.targets,
+                            #          self.model.valid_summary_op],
+                            #         feed_dict={
+                            #             use_valid: True,
+                            #             self.model.dropout_keep_prob: 1.0
+                            #         }
+                            #     )
+                            loss, logits, targs, summary_v = \
                                 sess.run(
                                     [self.model.loss,
-                                     self.model.accuracy,
                                      self.model.logits,
                                      self.model.targets,
                                      self.model.valid_summary_op],
@@ -218,9 +229,9 @@ class TFRunnerCategorical:
                             LOGGER.info('   Y_batch = \n{}'.format(
                                 np.argmax(targs, 1)
                             ))
-                            LOGGER.info('    accuracy = {}'.format(
-                                accuracy
-                            ))
+                            # LOGGER.info('    accuracy = {}'.format(
+                            #     accuracy
+                            # ))
                             LOGGER.info(
                                 '  Valid loss at batch {}: {:5.1f}'.format(
                                     b_num, loss
