@@ -142,6 +142,9 @@ class MNISTConvNet:
         self.global_step = None
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
         self.dropout_keep_prob = None
+        # note, 'NCHW' is only supported on GPUs
+        self.data_format = 'NHWC'
+        self.n_classes = 10
 
     def _create_summaries(self):
         base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
@@ -150,8 +153,9 @@ class MNISTConvNet:
             train_histo_loss = tf.summary.histogram(
                 'histogram_loss', self.loss
             )
-            train_accuracy = tf.summary.scalar('accuracy', self.accuracy)
-            train_summaries = [train_loss, train_histo_loss, train_accuracy]
+            # train_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+            # train_summaries = [train_loss, train_histo_loss, train_accuracy]
+            train_summaries = [train_loss, train_histo_loss]
             train_summaries.extend(base_summaries)
             self.train_summary_op = tf.summary.merge(train_summaries)
         with tf.name_scope('summaries/valid'):
@@ -159,8 +163,9 @@ class MNISTConvNet:
             valid_histo_loss = tf.summary.histogram(
                 'histogram_loss', self.loss
             )
-            valid_accuracy = tf.summary.scalar('accuracy', self.accuracy)
-            valid_summaries = [valid_loss, valid_histo_loss, valid_accuracy]
+            # valid_accuracy = tf.summary.scalar('accuracy', self.accuracy)
+            # valid_summaries = [valid_loss, valid_histo_loss, valid_accuracy]
+            valid_summaries = [valid_loss, valid_histo_loss]
             valid_summaries.extend(base_summaries)
             self.valid_summary_op = tf.summary.merge(valid_summaries)
 
@@ -305,16 +310,16 @@ class MNISTConvNet:
                 axis=0,
                 name='loss'
             )
-            preds = tf.nn.softmax(self.logits, name='preds')
-            correct_preds = tf.equal(
-                tf.argmax(preds, 1), tf.argmax(self.targets, 1),
-                name='correct_preds'
-            )
-            self.accuracy = tf.divide(
-                tf.reduce_sum(tf.cast(correct_preds, tf.float32)),
-                tf.cast(tf.shape(self.targets)[0], tf.float32),
-                name='accuracy'
-            )
+            # preds = tf.nn.softmax(self.logits, name='preds')
+            # correct_preds = tf.equal(
+            #     tf.argmax(preds, 1), tf.argmax(self.targets, 1),
+            #     name='correct_preds'
+            # )
+            # self.accuracy = tf.divide(
+            #     tf.reduce_sum(tf.cast(correct_preds, tf.float32)),
+            #     tf.cast(tf.shape(self.targets)[0], tf.float32),
+            #     name='accuracy'
+            # )
 
     def _define_train_op(self, learning_rate):
         LOGGER.info('Building train op with learning_rate = %f' %
@@ -339,4 +344,4 @@ class MNISTConvNet:
         self._create_summaries()
 
     def get_output_nodes(self):
-        return ['softmax_linear/logits']
+        return ['model/softmax_linear/logits']
