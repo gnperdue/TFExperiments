@@ -74,10 +74,9 @@ def main(argv=None):
     else:
         model = ModelsMNIST.MNISTLogReg()
 
-    short = False
+    short = True
     if short:
-        run_params_dict['SAVE_EVRY_N_BATCHES'] = 1
-        train_params_dict['BATCH_SIZE'] = 64
+        train_params_dict['BATCH_SIZE'] = 128
 
     logger.info(' run_params_dict = {}'.format(repr(run_params_dict)))
     logger.info(' train_params_dict = {}'.format(repr(train_params_dict)))
