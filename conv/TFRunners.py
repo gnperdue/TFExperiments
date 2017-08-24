@@ -63,7 +63,7 @@ class TFRunnerCategorical:
         return targets, features
 
     def run_training(
-            self, do_validation=False, short=False
+            self, do_validation=False, short=False, is_image=False
     ):
         """
         run training (TRAIN file list) and optionally run a validation pass
@@ -94,7 +94,8 @@ class TFRunnerCategorical:
                     filenames_list=self.train_file_list,
                     batch_size=self.batch_size,
                     name='train',
-                    compression=self.file_compression
+                    compression=self.file_compression,
+                    is_image=is_image
                 )
                 targets_train, features_train = \
                     self._prep_targets_and_features(
@@ -106,7 +107,8 @@ class TFRunnerCategorical:
                     filenames_list=self.valid_file_list,
                     batch_size=self.batch_size,
                     name='valid',
-                    compression=self.file_compression
+                    compression=self.file_compression,
+                    is_image=is_image
                 )
                 targets_valid, features_valid = \
                     self._prep_targets_and_features(
@@ -247,7 +249,7 @@ class TFRunnerCategorical:
         LOGGER.info(' Saved graph {}'.format(out_graph))
         LOGGER.info('Finished training...')
 
-    def run_testing(self, short=False):
+    def run_testing(self, short=False, is_image=False):
         """
         run a test pass (not "validation"!), based on the TEST file list.
         """
@@ -265,7 +267,8 @@ class TFRunnerCategorical:
                     filenames_list=self.train_file_list,
                     batch_size=self.batch_size,
                     name='test',
-                    compression=self.file_compression
+                    compression=self.file_compression,
+                    is_image=is_image
                 )
                 targets, features = \
                     self._prep_targets_and_features(
