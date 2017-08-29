@@ -1,6 +1,9 @@
 """
 Simple logistic regression to test TF framework APIs.
 
+MNIST TF records available here:
+    https://github.com/gnperdue/RandomData/tree/master/TensorFlow
+
 Graph freezing and loading functions inspired by:
     https://blog.metaflow.fr/tensorflow-how-to-freeze-a-model-and-serve-it-with-a-python-api-d4f3596b3adc
 """
@@ -395,8 +398,12 @@ def test_pb(n_batches, model_dir, data_dir, batch_size=10):
 
             test_file = data_dir + 'mnist_test.tfrecord.gz'
             features_batch, targets_batch = batch_generator(
-                [test_file], stage_name='test', batch_size=batch_size, num_epochs=1
+                [test_file], stage_name='train', batch_size=batch_size, num_epochs=1
             )
+            with tf.variable_scope('pipeline_control'):
+                use_valid = tf.placeholder(
+                    tf.bool, shape=(), name='train_val_batch_logic'
+                )
             
             logits = g.get_tensor_by_name('model/logits:0')
 
@@ -412,7 +419,8 @@ def test_pb(n_batches, model_dir, data_dir, batch_size=10):
             try:
                 for i in range(n_batches):
                     logits_batch, Y_batch = sess.run(
-                        [logits, targets_batch]
+                        [logits, targets_batch],
+                        feed_dict={use_valid: False}
                     )
                     n_processed += batch_size
                     preds = tf.nn.softmax(logits_batch)
