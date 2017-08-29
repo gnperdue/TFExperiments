@@ -134,7 +134,7 @@ def freeze_graph(
 
 def load_frozen_graph(graph_filename):
     """
-    load a protobuf into the default graph and parse it
+    load a protobuf *into the default graph* and parse it
     """
     with tf.gfile.GFile(graph_filename, 'rb') as f:
         graph_def = tf.GraphDef()
@@ -197,7 +197,7 @@ def batch_generator(
     return features_batch, targets_batch
 
 
-def train_tfrec(n_batches, model_dir, data_dir):
+def train(n_batches, model_dir, data_dir):
     tf.reset_default_graph()
     ckpt_dir = model_dir + '/checkpoints'
     run_dest_dir = model_dir + '/%d' % time.time()
@@ -307,13 +307,14 @@ def train_tfrec(n_batches, model_dir, data_dir):
     LOGGER.info('Finished training...')
 
 
-def test_tfrec(n_batches, model_dir, data_dir, batch_size=10):
+def test_ckpt(n_batches, model_dir, data_dir, batch_size=10):
     tf.reset_default_graph()
     LOGGER.info('Starting testing via checkpoint...')
 
     ckpt_dir = model_dir + '/checkpoints'
 
-    with tf.Graph().as_default() as g:
+    g = tf.Graph()
+    with g.as_default():
 
         with tf.Session(graph=g) as sess:
 
@@ -360,11 +361,8 @@ def test_tfrec(n_batches, model_dir, data_dir, batch_size=10):
                     LOGGER.info('  batch {} loss = {} for nproc {}'.format(
                         i, loss_batch, n_processed
                     ))
-                    LOGGER.info("  total_correct_preds = {}".format(
-                        total_correct_preds
-                    ))
-                    LOGGER.info("  n_processed = {}".format(
-                        n_processed
+                    LOGGER.info("  total_corr_preds / nproc = {} / {}".format(
+                        total_correct_preds, n_processed
                     ))
                     LOGGER.info("  Cumul. Accuracy {0}".format(
                         total_correct_preds / n_processed
@@ -377,8 +375,68 @@ def test_tfrec(n_batches, model_dir, data_dir, batch_size=10):
                 coord.request_stop()
                 coord.join(threads)
 
-    print('Finished testing via checkpoint...')
-    LOGGER.info('Finished testing via checkpoint...')
+    print('Finished testing...')
+    LOGGER.info('Finished testing...')
+
+
+def test_pb(n_batches, model_dir, data_dir, batch_size=10):
+    tf.reset_default_graph()
+    LOGGER.info('Starting testing via checkpoint...')
+
+    g = tf.Graph()
+    with g.as_default():
+        load_frozen_graph(model_dir + '/frozen_model.pb')
+        for tnsr in g.as_graph_def().node:
+            LOGGER.debug('tnsr name = {}'.format(tnsr.name))
+
+        with tf.Session(graph=g) as sess:
+
+            test_file = data_dir + 'mnist_test.tfrecord.gz'
+            features_batch, targets_batch = batch_generator(
+                [test_file], stage_name='test', batch_size=batch_size, num_epochs=1
+            )
+            
+            logits = g.get_tensor_by_name('model/logits:0')
+
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+
+            total_correct_preds = 0
+
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
+            n_processed = 0
+            try:
+                for i in range(n_batches):
+                    logits_batch, Y_batch = sess.run(
+                        [logits, targets_batch]
+                    )
+                    n_processed += batch_size
+                    preds = tf.nn.softmax(logits_batch)
+                    correct_preds = tf.equal(
+                        tf.argmax(preds, 1), tf.argmax(Y_batch, 1)
+                    )
+                    accuracy = tf.reduce_sum(
+                        tf.cast(correct_preds, tf.float32)
+                    )
+                    total_correct_preds += sess.run(accuracy)
+                    LOGGER.info("  total_corr_preds / nproc = {} / {}".format(
+                        total_correct_preds, n_processed
+                    ))
+                    LOGGER.info("  Cumul. Accuracy {0}".format(
+                        total_correct_preds / n_processed
+                    ))
+            except tf.errors.OutOfRangeError:
+                LOGGER.info('Testing stopped - queue is empty.')
+            except Exception as e:
+                LOGGER.error(e)
+            finally:
+                coord.request_stop()
+                coord.join(threads)
+
+    print('Finished testing via load_frozen_graph...')
+    LOGGER.info('Finished testing via load_frozen_graph...')
 
 
 if __name__ == '__main__':
@@ -396,12 +454,17 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
-    train_tfrec(
+    train(
         n_batches=options.n_batches,
         model_dir=options.model_dir,
         data_dir=options.data_dir
     )
-    test_tfrec(
+    test_ckpt(
+        n_batches=10,
+        model_dir=options.model_dir,
+        data_dir=options.data_dir
+    )
+    test_pb(
         n_batches=10,
         model_dir=options.model_dir,
         data_dir=options.data_dir
