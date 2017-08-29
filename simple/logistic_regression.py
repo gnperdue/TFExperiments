@@ -308,6 +308,7 @@ def train(n_batches, model_dir, data_dir):
 
 
 def test_ckpt(n_batches, model_dir, data_dir, batch_size=10):
+    """ test via checkpoint - always works on the train machine, fails elsewhere """ 
     tf.reset_default_graph()
     LOGGER.info('Starting testing via checkpoint...')
 
@@ -380,6 +381,7 @@ def test_ckpt(n_batches, model_dir, data_dir, batch_size=10):
 
 
 def test_pb(n_batches, model_dir, data_dir, batch_size=10):
+    """ attempt to use a frozen protobuf to do the test """
     tf.reset_default_graph()
     LOGGER.info('Starting testing via checkpoint...')
 
