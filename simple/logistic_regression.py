@@ -311,7 +311,7 @@ def train(n_batches, model_dir, data_dir):
 
 
 def test_ckpt(n_batches, model_dir, data_dir, batch_size=10):
-    """ test via checkpoint - always works on the train machine, fails elsewhere """ 
+    """ test via checkpoint - always works on the train machine, fails elsewhere """
     tf.reset_default_graph()
     LOGGER.info('Starting testing via checkpoint...')
 
@@ -404,7 +404,7 @@ def test_pb(n_batches, model_dir, data_dir, batch_size=10):
                 use_valid = tf.placeholder(
                     tf.bool, shape=(), name='train_val_batch_logic'
                 )
-            
+
             logits = g.get_tensor_by_name('model/logits:0')
 
             sess.run(tf.global_variables_initializer())
@@ -464,18 +464,18 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
-    train(
-        n_batches=options.n_batches,
-        model_dir=options.model_dir,
-        data_dir=options.data_dir
-    )
+    # train(
+    #     n_batches=options.n_batches,
+    #     model_dir=options.model_dir,
+    #     data_dir=options.data_dir
+    # )
     test_ckpt(
         n_batches=10,
         model_dir=options.model_dir,
         data_dir=options.data_dir
     )
-    test_pb(
-        n_batches=10,
-        model_dir=options.model_dir,
-        data_dir=options.data_dir
-    )
+    # test_pb(
+    #     n_batches=10,
+    #     model_dir=options.model_dir,
+    #     data_dir=options.data_dir
+    # )
