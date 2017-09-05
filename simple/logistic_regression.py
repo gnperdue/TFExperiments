@@ -214,43 +214,46 @@ def train(n_batches, model_dir, data_dir):
             features_train, targets_train = batch_generator(
                 [train_file], stage_name='train', batch_size=128, num_epochs=1
             )
-            valid_file = data_dir + 'mnist_valid.tfrecord.gz'
-            features_valid, targets_valid = batch_generator(
-                [valid_file], stage_name='valid', batch_size=128, num_epochs=1000
-            )
+            # valid_file = data_dir + 'mnist_valid.tfrecord.gz'
+            # features_valid, targets_valid = batch_generator(
+            #     [valid_file], stage_name='valid', batch_size=128, num_epochs=1000
+            # )
 
-            def get_features_train():
-                return features_train
+            # def get_features_train():
+            #     return features_train
 
-            def get_features_valid():
-                return features_valid
+            # def get_features_valid():
+            #     return features_valid
 
-            def get_targets_train():
-                return targets_train
+            # def get_targets_train():
+            #     return targets_train
 
-            def get_targets_valid():
-                return targets_valid
+            # def get_targets_valid():
+            #     return targets_valid
 
-            with tf.variable_scope('pipeline_control'):
-                use_valid = tf.placeholder(
-                    tf.bool, shape=(), name='train_val_batch_logic'
-                )
+            # with tf.variable_scope('pipeline_control'):
+            #     use_valid = tf.placeholder(
+            #         tf.bool, shape=(), name='train_val_batch_logic'
+            #     )
 
-            features = tf.cond(
-                use_valid,
-                get_features_valid,
-                get_features_train,
-                name='features_selection'
-            )
-            targets = tf.cond(
-                use_valid,
-                get_targets_valid,
-                get_targets_train,
-                name='targets_selection'
-            )
-            model.build_network(features, targets)
+            # features = tf.cond(
+            #     use_valid,
+            #     get_features_valid,
+            #     get_features_train,
+            #     name='features_selection'
+            # )
+            # targets = tf.cond(
+            #     use_valid,
+            #     get_targets_valid,
+            #     get_targets_train,
+            #     name='targets_selection'
+            # )
+            # model.build_network(features, targets)
+            model.build_network(features_train, targets_train)
             writer = tf.summary.FileWriter(run_dest_dir)
-            saver = tf.train.Saver()
+            saver = tf.train.Saver(
+                save_relative_paths=True
+            )
 
             sess.run(tf.global_variables_initializer())
             sess.run(tf.local_variables_initializer())
@@ -272,7 +275,7 @@ def train(n_batches, model_dir, data_dir):
                     # regular training
                     _, loss_batch, summary_t = sess.run(
                         [model.optimizer, model.loss, model.train_summary_op],
-                        feed_dict={use_valid: False}
+                        # feed_dict={use_valid: False}
                     )
                     LOGGER.info(
                         ' Loss @step {}: {:5.1f}'.format(b_num, loss_batch)
@@ -284,7 +287,7 @@ def train(n_batches, model_dir, data_dir):
                             sess.run(
                                 [model.loss,
                                  model.valid_summary_op],
-                                feed_dict={use_valid: True}
+                                # feed_dict={use_valid: True}
                             )
                         LOGGER.info(
                             '  Valid loss @step {}: {:5.1f}'.format(
@@ -464,11 +467,11 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
-    # train(
-    #     n_batches=options.n_batches,
-    #     model_dir=options.model_dir,
-    #     data_dir=options.data_dir
-    # )
+    train(
+        n_batches=options.n_batches,
+        model_dir=options.model_dir,
+        data_dir=options.data_dir
+    )
     test_ckpt(
         n_batches=10,
         model_dir=options.model_dir,
