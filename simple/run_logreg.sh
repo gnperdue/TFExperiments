@@ -6,6 +6,6 @@ if [ $# -gt 0 ]; then
 fi
 
 DATADIR="${HOME}//Dropbox/Data/RandomData/TensorFlow/"
-MODELDIR="/tmp/logreg"
+MODELDIR="/tmp/models"
 
 python logistic_regression.py -n $NTRAINBATCH -m $MODELDIR -d $DATADIR
