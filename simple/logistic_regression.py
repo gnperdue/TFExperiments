@@ -474,8 +474,8 @@ if __name__ == '__main__':
         model_dir=options.model_dir,
         data_dir=options.data_dir
     )
-    test_pb(
-        n_batches=10,
-        model_dir=options.model_dir,
-        data_dir=options.data_dir
-    )
+    # test_pb(
+    #     n_batches=10,
+    #     model_dir=options.model_dir,
+    #     data_dir=options.data_dir
+    # )
