@@ -312,6 +312,41 @@ def train(n_batches, model_dir, data_dir):
     LOGGER.info('Finished training...')
 
 
+def load_some_weights(model_dir):
+    """ look at model weights """
+    tf.reset_default_graph()
+    LOGGER.info('Look at some weights...')
+
+    ckpt_dir = model_dir + '/checkpoints'
+
+    g = tf.Graph()
+    with g.as_default():
+
+        with tf.Session(graph=g) as sess:
+
+            model = MNISTLogReg()
+            features = tf.placeholder(tf.float32, [None, 784], name='features')
+            targets = tf.placeholder(tf.float32, [None, 10], name='targets')
+            model.build_network(features, targets)
+
+            saver = tf.train.Saver()
+
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+                LOGGER.info('Restored session from {}'.format(ckpt_dir))
+
+            for tnsr in g.as_graph_def().node:
+                LOGGER.debug('tnsr name = {}'.format(tnsr.name))
+
+            LOGGER.info('weights = {}'.format(
+                g.get_tensor_by_name('model/weights:0').eval()
+            ))
+
+
 def test_ckpt(n_batches, model_dir, data_dir, batch_size=10):
     """ test via checkpoint - always works on the train machine, fails elsewhere """
     tf.reset_default_graph()
@@ -385,72 +420,6 @@ def test_ckpt(n_batches, model_dir, data_dir, batch_size=10):
     LOGGER.info('Finished testing...')
 
 
-def test_pb(n_batches, model_dir, data_dir, batch_size=10):
-    """ attempt to use a frozen protobuf to do the test """
-    tf.reset_default_graph()
-    LOGGER.info('Starting testing via checkpoint...')
-
-    g = tf.Graph()
-    with g.as_default():
-        load_frozen_graph(model_dir + '/frozen_model.pb')
-        for tnsr in g.as_graph_def().node:
-            LOGGER.debug('tnsr name = {}'.format(tnsr.name))
-
-        with tf.Session(graph=g) as sess:
-
-            test_file = data_dir + 'mnist_test.tfrecord.gz'
-            features_batch, targets_batch = batch_generator(
-                [test_file], stage_name='train', batch_size=batch_size, num_epochs=1
-            )
-            with tf.variable_scope('pipeline_control'):
-                use_valid = tf.placeholder(
-                    tf.bool, shape=(), name='train_val_batch_logic'
-                )
-
-            logits = g.get_tensor_by_name('model/logits:0')
-
-            sess.run(tf.global_variables_initializer())
-            sess.run(tf.local_variables_initializer())
-
-            total_correct_preds = 0
-
-            coord = tf.train.Coordinator()
-            threads = tf.train.start_queue_runners(coord=coord)
-
-            n_processed = 0
-            try:
-                for i in range(n_batches):
-                    logits_batch, Y_batch = sess.run(
-                        [logits, targets_batch],
-                        feed_dict={use_valid: False}
-                    )
-                    n_processed += batch_size
-                    preds = tf.nn.softmax(logits_batch)
-                    correct_preds = tf.equal(
-                        tf.argmax(preds, 1), tf.argmax(Y_batch, 1)
-                    )
-                    accuracy = tf.reduce_sum(
-                        tf.cast(correct_preds, tf.float32)
-                    )
-                    total_correct_preds += sess.run(accuracy)
-                    LOGGER.info("  total_corr_preds / nproc = {} / {}".format(
-                        total_correct_preds, n_processed
-                    ))
-                    LOGGER.info("  Cumul. Accuracy {0}".format(
-                        total_correct_preds / n_processed
-                    ))
-            except tf.errors.OutOfRangeError:
-                LOGGER.info('Testing stopped - queue is empty.')
-            except Exception as e:
-                LOGGER.error(e)
-            finally:
-                coord.request_stop()
-                coord.join(threads)
-
-    print('Finished testing via load_frozen_graph...')
-    LOGGER.info('Finished testing via load_frozen_graph...')
-
-
 if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser(usage=__doc__)
@@ -471,13 +440,11 @@ if __name__ == '__main__':
         model_dir=options.model_dir,
         data_dir=options.data_dir
     )
+    load_some_weights(
+        model_dir=options.model_dir
+    )
     test_ckpt(
         n_batches=10,
         model_dir=options.model_dir,
         data_dir=options.data_dir
     )
-    # test_pb(
-    #     n_batches=10,
-    #     model_dir=options.model_dir,
-    #     data_dir=options.data_dir
-    # )
