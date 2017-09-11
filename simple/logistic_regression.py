@@ -345,6 +345,9 @@ def load_some_weights(model_dir):
             LOGGER.info('weights = {}'.format(
                 g.get_tensor_by_name('model/weights:0').eval()
             ))
+            LOGGER.info('weights = {}'.format(
+                model.W.eval()
+            ))
 
 
 def test_ckpt(n_batches, model_dir, data_dir, batch_size=10):
