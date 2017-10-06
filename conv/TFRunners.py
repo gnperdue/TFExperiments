@@ -69,7 +69,7 @@ class TFRunnerCategorical:
         run training (TRAIN file list) and optionally run a validation pass
         (on the VALID file list)
         """
-        LOGGER.info('staring run_training...')
+        LOGGER.info('staring run_training, image = {}...'.format(is_image))
         tf.reset_default_graph()
         initial_batch = 0
         ckpt_dir = self.save_model_directory + '/checkpoints'
@@ -90,31 +90,37 @@ class TFRunnerCategorical:
 
             with tf.Session(graph=g) as sess:
 
-                train_reader = MNISTDataReader(
-                    filenames_list=self.train_file_list,
-                    batch_size=self.batch_size,
-                    name='train',
-                    compression=self.file_compression,
-                    is_image=is_image
-                )
-                targets_train, features_train = \
-                    self._prep_targets_and_features(
-                        train_reader.shuffle_batch_generator,
-                        self.num_epochs
+                with tf.variable_scope('data_io'):
+                    train_reader = MNISTDataReader(
+                        filenames_list=self.train_file_list,
+                        batch_size=self.batch_size,
+                        name='train',
+                        compression=self.file_compression,
+                        is_image=is_image
                     )
+                    targets_train, features_train = \
+                        self._prep_targets_and_features(
+                            train_reader.shuffle_batch_generator,
+                            self.num_epochs
+                        )
 
-                valid_reader = MNISTDataReader(
-                    filenames_list=self.valid_file_list,
-                    batch_size=self.batch_size,
-                    name='valid',
-                    compression=self.file_compression,
-                    is_image=is_image
-                )
-                targets_valid, features_valid = \
-                    self._prep_targets_and_features(
-                        valid_reader.batch_generator,
-                        1000000
+                    valid_reader = MNISTDataReader(
+                        filenames_list=self.valid_file_list,
+                        batch_size=self.batch_size,
+                        name='valid',
+                        compression=self.file_compression,
+                        is_image=is_image
                     )
+                    targets_valid, features_valid = \
+                        self._prep_targets_and_features(
+                            valid_reader.batch_generator,
+                            1000000
+                        )
+
+                    with tf.variable_scope('pipeline_control'):
+                        use_valid = tf.placeholder(
+                            tf.bool, shape=(), name='train_val_batch_logic'
+                        )
 
                 def get_features_train():
                     return features_train
@@ -127,11 +133,6 @@ class TFRunnerCategorical:
 
                 def get_targets_valid():
                     return targets_valid
-
-                with tf.variable_scope('pipeline_control'):
-                    use_valid = tf.placeholder(
-                        tf.bool, shape=(), name='train_val_batch_logic'
-                    )
 
                 features = tf.cond(
                     use_valid,

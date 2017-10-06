@@ -32,6 +32,8 @@ tf.app.flags.DEFINE_boolean('do_testing', True,
                             """Perform testing ops.""")
 tf.app.flags.DEFINE_boolean('do_conv', True,
                             """Use the conv model.""")
+tf.app.flags.DEFINE_boolean('do_a_short_run', True,
+                            """Do a short run.""")
 
 
 def main(argv=None):
@@ -74,10 +76,6 @@ def main(argv=None):
     else:
         model = ModelsMNIST.MNISTLogReg()
 
-    short = True
-    if short:
-        train_params_dict['BATCH_SIZE'] = 128
-
     logger.info(' run_params_dict = {}'.format(repr(run_params_dict)))
     logger.info(' train_params_dict = {}'.format(repr(train_params_dict)))
     runner = TFRunnerCategorical(
@@ -87,6 +85,7 @@ def main(argv=None):
     )
     do_validation = FLAGS.do_validation
     is_image = FLAGS.do_conv
+    short = FLAGS.do_a_short_run
 
     if FLAGS.do_training:
         runner.run_training(

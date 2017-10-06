@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DAT=`date +%s`
-MODEL_CODE="20170823"
+MODEL_CODE="20171005"
 
 TRAINING="--nodo_training"
 TRAINING="--do_training"
@@ -13,8 +13,11 @@ TESTING="--do_testing"
 CONV="--nodo_conv"
 CONV="--do_conv"
 
+SHORT=""
+SHORT="--do_a_short_run"
+
 # data, log, and model logistics
-BASEP="/Users/gnperdue/Documents/MINERvA/AI/mnist_tf"
+BASEP="${HOME}/Documents/MINERvA/AI/mnist_tf"
 FILEPAT="mnist"
 DATADIR="${HOME}/Dropbox/Data/RandomData/TensorFlow/"
 LOGDIR="${BASEP}/logs"
@@ -32,7 +35,7 @@ python run_mnist.py \
   --file_root $FILEPAT \
   --model_dir $MODELDIR \
   --log_name $LOGFILE $LOGLEVEL \
-  $TRAINING $VALIDATION $TESTING
+  $TRAINING $VALIDATION $TESTING $SHORT
 EOF
 
 python run_mnist.py \
@@ -42,6 +45,6 @@ python run_mnist.py \
   --file_root $FILEPAT \
   --model_dir $MODELDIR \
   --log_name $LOGFILE $LOGLEVEL \
-  $TRAINING $VALIDATION $TESTING
+  $TRAINING $VALIDATION $TESTING $SHORT
 
 echo "Job finished "`date`""

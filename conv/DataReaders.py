@@ -62,12 +62,14 @@ class MNISTDataReader:
                     tfrecord_features['features'], tf.uint8
                 )
                 features = tf.reshape(features, self.features_shape)
+                features = tf.cast(features, tf.float32)
             with tf.variable_scope('targets'):
                 targets = tf.decode_raw(tfrecord_features['targets'], tf.uint8)
                 targets = tf.reshape(targets, [-1])
                 targets = tf.one_hot(
                     indices=targets, depth=10, on_value=1, off_value=0
                 )
+                targets = tf.cast(targets, tf.float32)
         return features, targets
 
     def batch_generator(self, num_epochs=1):
