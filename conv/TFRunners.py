@@ -264,18 +264,19 @@ class TFRunnerCategorical:
             LOGGER.info(' Processing {} batches...'.format(n_batches))
 
             with tf.Session(graph=g) as sess:
-                data_reader = MNISTDataReader(
-                    filenames_list=self.train_file_list,
-                    batch_size=self.batch_size,
-                    name='test',
-                    compression=self.file_compression,
-                    is_image=is_image
-                )
-                targets, features = \
-                    self._prep_targets_and_features(
-                        data_reader.batch_generator,
-                        self.num_epochs
+                with tf.variable_scope('data_io'):
+                    data_reader = MNISTDataReader(
+                        filenames_list=self.train_file_list,
+                        batch_size=self.batch_size,
+                        name='test',
+                        compression=self.file_compression,
+                        is_image=is_image
                     )
+                    targets, features = \
+                        self._prep_targets_and_features(
+                            data_reader.batch_generator,
+                            self.num_epochs
+                        )
 
                 self.model.prepare_for_inference(features)
                 self.model.prepare_for_loss_computation(targets)
