@@ -147,6 +147,7 @@ class MNISTConvNet:
         self.is_training = None
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
         self.dropout_keep_prob = None
+        self.padding = 'SAME'
         # note, 'NCHW' is only supported on GPUs
         self.data_format = 'NHWC'
         self.n_classes = 10
@@ -190,8 +191,8 @@ class MNISTConvNet:
                 name, shp, initializer=initializer, regularizer=self.reg
             )
 
-        def make_fc_Layer(
-                inp_lyr, name_fc_lyr, name_w, shp_w, name_b=None, shp_b=None
+        def make_fc_layer(
+                inp_lyr, name_w, shp_w, name_b=None, shp_b=None
         ):
             """ assume if shp_b is None that we are using batch norm. """
             if shp_b is None:
@@ -199,10 +200,46 @@ class MNISTConvNet:
             else:
                 W = make_wbkernels(name_w, shp_w)
                 b = make_wbkernels(name_b, shp_b)
-                fc_lyr = tf.add(
-                    tf.matmul(inp_lyr, W), b, name=name_fc_lyr
+                fc_lyr = tf.nn.bias_add(
+                    tf.matmul(inp_lyr, W, name='matmul'), b,
+                    data_format=self.data_format, name='bias_add'
                 )
             return fc_lyr
+            
+        def make_active_fc_Layer(
+                inp_lyr, name_fc_lyr,
+                name_w, shp_w, name_b=None, shp_b=None, act=tf.nn.relu
+        ):
+            fc_lyr = make_fc_layer(inp_lyr, name_w, shp_w, name_b, shp_b)
+            fc_lyr = act(fc_lyr, name=name_fc_lyr)
+            return fc_lyr
+
+        def make_active_conv(
+                input_lyr, kernels, biases, name, act=tf.nn.relu
+        ):
+            conv = tf.nn.conv2d(
+                input_lyr, kernels, strides=[1, 1, 1, 1],
+                padding=self.padding, data_format=self.data_format
+            )
+            return act(tf.nn.bias_add(
+                conv, biases, data_format=self.data_format, name=name
+            ))
+
+        def make_pool(input_lyr, name):
+            if self.data_format == 'NHWC':
+                ksize = [1, 2, 2, 1]
+                strides = [1, 2, 2, 1]
+            elif self.data_format == 'NCHW':
+                ksize = [1, 1, 2, 2]
+                strides = [1, 1, 2, 2]
+            else:
+                raise ValueError('Invalid data format!')
+            pool = tf.nn.max_pool(
+                input_lyr, ksize=ksize, strides=strides,
+                padding=self.padding, data_format=self.data_format,
+                name=name
+            )
+            return pool
 
         with tf.variable_scope('io'):
             self.X_img = features
@@ -211,75 +248,32 @@ class MNISTConvNet:
             with tf.variable_scope('conv1'):
                 self.kernels1 = make_wbkernels('kernels', [5, 5, 1, 32])
                 self.biases1 = make_wbkernels('biases', [32])
-                self.conv1 = tf.nn.conv2d(
-                    self.X_img, self.kernels1, strides=[1, 1, 1, 1],
-                    padding='SAME', data_format=self.data_format
-                )
-                self.conv1 = tf.nn.relu(
-                    tf.nn.bias_add(
-                        self.conv1, self.biases1, data_format=self.data_format
-                    ),
-                    name='relu'
+                self.conv1 = make_active_conv(
+                    self.X_img, self.kernels1, self.biases1, 'relu_conv1'
                 )
 
             with tf.variable_scope('pool1'):
-                if self.data_format == 'NHWC':
-                    ksize = [1, 2, 2, 1]
-                    strides = [1, 2, 2, 1]
-                elif self.data_format == 'NCHW':
-                    ksize = [1, 1, 2, 2]
-                    strides = [1, 1, 2, 2]
-                else:
-                    raise ValueError('Invalid data format!')
-                self.pool1 = tf.nn.max_pool(
-                    self.conv1, ksize=ksize, strides=strides,
-                    padding='SAME', data_format=self.data_format,
-                    name='pool1'
-                )
+                self.pool1 = make_pool(self.conv1, name='pool1')
 
             with tf.variable_scope('conv2'):
                 self.kernels2 = make_wbkernels('kernels', [5, 5, 32, 64])
                 self.biases2 = make_wbkernels('biases', [64])
-                self.conv2 = tf.nn.conv2d(
-                    self.pool1, self.kernels2, strides=[1, 1, 1, 1],
-                    padding='SAME', data_format=self.data_format
-                )
-                self.conv2 = tf.nn.relu(
-                    tf.nn.bias_add(
-                        self.conv2, self.biases2, data_format=self.data_format
-                    ),
-                    name='relu'
+                self.conv2 = make_active_conv(
+                    self.pool1, self.kernels2, self.biases2, 'relu_conv2'
                 )
 
             with tf.variable_scope('pool2'):
-                if self.data_format == 'NHWC':
-                    ksize = [1, 2, 2, 1]
-                    strides = [1, 2, 2, 1]
-                elif self.data_format == 'NCHW':
-                    ksize = [1, 1, 2, 2]
-                    strides = [1, 1, 2, 2]
-                else:
-                    raise ValueError('Invalid data format!')
-                self.pool2 = tf.nn.max_pool(
-                    self.conv2, ksize=ksize, strides=strides,
-                    padding='SAME', data_format=self.data_format,
-                    name='pool2'
-                )
+                self.pool2 = make_pool(self.conv2, name='pool2')
 
             with tf.variable_scope('fc'):
                 # use weight of dimension 7 * 7 * 64 x 1024
                 input_features = 7 * 7 * 64
-                self.weights_fc = make_wbkernels(
-                    'weights', [input_features, 1024]
-                )
-                self.biases_fc = make_wbkernels('biases', [1024])
                 # reshape pool2 to 2 dimensional
                 self.pool2 = tf.reshape(self.pool2, [-1, input_features])
-                # apply relu on matmul of pool2 and w + b
-                self.fc = tf.nn.relu(
-                    tf.matmul(self.pool2, self.weights_fc) + self.biases_fc
+                self.fc = make_active_fc_Layer(
+                    self.pool2, 'fully_connected',
+                    'weights', [input_features, 1024], 'biases', [1024]
                 )
-                # apply dropout
                 self.fc = tf.nn.dropout(
                     self.fc, self.dropout_keep_prob, name='relu_dropout'
                 )
@@ -291,14 +285,11 @@ class MNISTConvNet:
                 self.biases_softmax = make_wbkernels(
                     'biases', [self.n_classes]
                 )
-                self.logits = tf.add(
+                self.logits = tf.nn.bias_add(
                     tf.matmul(self.fc, self.weights_softmax),
-                    self.biases_softmax,
+                    self.biases_softmax, data_format=self.data_format,
                     name='logits'
                 )
-                # self.logits = make_fc_Layer(
-                #     self.X, 'logits', 'weights', [784, 10], 'bias', [10]
-                # )
 
     def _set_targets(self, targets):
         with tf.variable_scope('targets'):
