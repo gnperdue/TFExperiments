@@ -34,6 +34,8 @@ tf.app.flags.DEFINE_boolean('do_conv', True,
                             """Use the conv model.""")
 tf.app.flags.DEFINE_boolean('do_a_short_run', True,
                             """Do a short run.""")
+tf.app.flags.DEFINE_boolean('do_batch_norm', False,
+                            """Do batch normalization.""")
 
 
 def main(argv=None):
@@ -72,7 +74,7 @@ def main(argv=None):
     train_params_dict = utils_mnist.make_default_train_params_dict()
 
     if FLAGS.do_conv:
-        model = ModelsMNIST.MNISTConvNet()
+        model = ModelsMNIST.MNISTConvNet(use_batch_norm=FLAGS.do_batch_norm)
     else:
         model = ModelsMNIST.MNISTLogReg()
 
