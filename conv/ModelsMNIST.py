@@ -9,6 +9,29 @@ import logging
 LOGGER = logging.getLogger(__name__)
 
 
+class LayerCreator:
+    def __init__(
+            self, regularization_strategy='l2', regularization_scale=0.0001
+    ):
+        if regularization_strategy == 'l2':
+            self.reg = tf.contrib.layers.l2_regularizer(
+                scale=regularization_scale
+            )
+        else:
+            raise NotImplementedError(
+                'Regularization strategy ' + regularization_strategy + ' \
+                is not implemented yet.'
+            )
+
+        def make_wbkernels(
+                name, shp, initializer=xavier_init(uniform=False),
+        ):
+            """ make weights, biases, kernels """
+            return tf.get_variable(
+                name, shp, initializer=initializer, regularizer=self.reg
+            )
+        
+
 class MNISTLogReg:
     def __init__(self):
         self.loss = None
@@ -151,6 +174,7 @@ class MNISTConvNet:
         # note, 'NCHW' is only supported on GPUs
         self.data_format = 'NHWC'
         self.n_classes = 10
+        self.layer_creator = LayerCreator('l2', 0.0001)
 
     def _create_summaries(self):
         base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
@@ -182,6 +206,7 @@ class MNISTConvNet:
             0, dtype=tf.int32, trainable=False, name='global_step'
         )
         self.is_training = tf.placeholder(tf.bool, name='is_training')
+        lc = self.layer_creator
 
         def make_wbkernels(
                 name, shp, initializer=xavier_init(uniform=False),
@@ -195,8 +220,13 @@ class MNISTConvNet:
                 inp_lyr, name_w, shp_w, name_b=None, shp_b=None
         ):
             """ assume if shp_b is None that we are using batch norm. """
-            if shp_b is None:
-                fc_lyr = None
+            if shp_b is None and self.use_batch_norm:
+                W = lc.make_wbkernels(name_w, shp_w)
+                fc_lyr = tf.matmul(inp_lyr, W, name='matmul')
+                fc_lyr = tf.contrib.layers.batch_norm(
+                    fc_lyr, center=True, scale=True,
+                    data_format=self.data_format, is_training=self.is_training
+                )
             else:
                 W = make_wbkernels(name_w, shp_w)
                 b = make_wbkernels(name_b, shp_b)
@@ -215,15 +245,22 @@ class MNISTConvNet:
             return fc_lyr
 
         def make_active_conv(
-                input_lyr, kernels, biases, name, act=tf.nn.relu
+                input_lyr, name, kernels, biases=None, act=tf.nn.relu
         ):
             conv = tf.nn.conv2d(
                 input_lyr, kernels, strides=[1, 1, 1, 1],
                 padding=self.padding, data_format=self.data_format
             )
-            return act(tf.nn.bias_add(
-                conv, biases, data_format=self.data_format, name=name
-            ))
+            if biases is None and self.use_batch_norm:
+                # TODO - test `activation_fun` argument
+                return act(tf.contrib.layers.batch_norm(
+                    conv, center=True, scale=True,
+                    data_format=self.data_format, is_training=self.is_training
+                ))
+            else:
+                return act(tf.nn.bias_add(
+                    conv, biases, data_format=self.data_format, name=name
+                ))
 
         def make_pool(input_lyr, name):
             if self.data_format == 'NHWC':
@@ -247,9 +284,10 @@ class MNISTConvNet:
         with tf.variable_scope('model'):
             with tf.variable_scope('conv1'):
                 self.kernels1 = make_wbkernels('kernels', [5, 5, 1, 32])
-                self.biases1 = make_wbkernels('biases', [32])
+                self.biases1 = None if self.use_batch_norm else \
+                    make_wbkernels('biases', [32])
                 self.conv1 = make_active_conv(
-                    self.X_img, self.kernels1, self.biases1, 'relu_conv1'
+                    self.X_img, 'relu_conv1', self.kernels1, self.biases1,
                 )
 
             with tf.variable_scope('pool1'):
@@ -257,9 +295,10 @@ class MNISTConvNet:
 
             with tf.variable_scope('conv2'):
                 self.kernels2 = make_wbkernels('kernels', [5, 5, 32, 64])
-                self.biases2 = make_wbkernels('biases', [64])
+                self.biases2 = None if self.use_batch_norm else \
+                    make_wbkernels('biases', [64])
                 self.conv2 = make_active_conv(
-                    self.pool1, self.kernels2, self.biases2, 'relu_conv2'
+                    self.pool1, 'relu_conv2', self.kernels2, self.biases2,
                 )
 
             with tf.variable_scope('pool2'):
