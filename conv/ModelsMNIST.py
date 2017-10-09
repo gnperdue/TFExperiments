@@ -11,7 +11,8 @@ LOGGER = logging.getLogger(__name__)
 
 class LayerCreator:
     def __init__(
-            self, regularization_strategy='l2', regularization_scale=0.0001
+            self, regularization_strategy='l2', regularization_scale=0.0001,
+            use_batch_norm=False, data_format='NHWC'
     ):
         if regularization_strategy == 'l2':
             self.reg = tf.contrib.layers.l2_regularizer(
@@ -22,15 +23,87 @@ class LayerCreator:
                 'Regularization strategy ' + regularization_strategy + ' \
                 is not implemented yet.'
             )
+        self.use_batch_norm = use_batch_norm
+        self.is_training = None
+        self.data_format = data_format
+        # self.pooling_config?? - must be more flexible
+        self.padding = 'SAME'   # TODO must be more flexible
+        # self.dropoug_config??
 
-        def make_wbkernels(
-                name, shp, initializer=xavier_init(uniform=False),
-        ):
-            """ make weights, biases, kernels """
-            return tf.get_variable(
-                name, shp, initializer=initializer, regularizer=self.reg
+    def set_is_training_placeholder(self, is_training):
+        self.is_training = is_training
+
+    def make_wbkernels(
+            self, name, shp, initializer=xavier_init(uniform=False),
+    ):
+        """ make weights, biases, kernels """
+        return tf.get_variable(
+            name, shp, initializer=initializer, regularizer=self.reg
+        )
+
+    def make_fc_layer(
+            self, inp_lyr, name_w, shp_w, name_b=None, shp_b=None
+    ):
+        """ assume if shp_b is None that we are using batch norm. """
+        if shp_b is None and self.use_batch_norm:
+            W = self.make_wbkernels(name_w, shp_w)
+            fc_lyr = tf.matmul(inp_lyr, W, name='matmul')
+            fc_lyr = tf.contrib.layers.batch_norm(
+                fc_lyr, center=True, scale=True,
+                data_format=self.data_format, is_training=self.is_training
             )
-        
+        else:
+            W = self.make_wbkernels(name_w, shp_w)
+            b = self.make_wbkernels(name_b, shp_b)
+            fc_lyr = tf.nn.bias_add(
+                tf.matmul(inp_lyr, W, name='matmul'), b,
+                data_format=self.data_format, name='bias_add'
+            )
+        return fc_lyr
+            
+    def make_active_fc_Layer(
+            self, inp_lyr, name_fc_lyr,
+            name_w, shp_w, name_b=None, shp_b=None, act=tf.nn.relu
+    ):
+        fc_lyr = self.make_fc_layer(inp_lyr, name_w, shp_w, name_b, shp_b)
+        fc_lyr = act(fc_lyr, name=name_fc_lyr)
+        return fc_lyr
+
+    def make_active_conv(
+            self, input_lyr, name, kernels, biases=None, act=tf.nn.relu
+    ):
+        conv = tf.nn.conv2d(
+            input_lyr, kernels, strides=[1, 1, 1, 1],
+            padding=self.padding, data_format=self.data_format
+        )
+        if biases is None and self.use_batch_norm:
+            # TODO - test `activation_fun` argument
+            return act(tf.contrib.layers.batch_norm(
+                conv, center=True, scale=True,
+                data_format=self.data_format, is_training=self.is_training
+            ))
+        else:
+            return act(tf.nn.bias_add(
+                conv, biases, data_format=self.data_format, name=name
+            ))
+
+    def make_pool(self, input_lyr, name):
+        """ TODO - size and strides must be more flexible """
+        if self.data_format == 'NHWC':
+            ksize = [1, 2, 2, 1]
+            strides = [1, 2, 2, 1]
+        elif self.data_format == 'NCHW':
+            ksize = [1, 1, 2, 2]
+            strides = [1, 1, 2, 2]
+        else:
+            raise ValueError('Invalid data format!')
+        pool = tf.nn.max_pool(
+            input_lyr, ksize=ksize, strides=strides,
+            padding=self.padding, data_format=self.data_format,
+            name=name
+        )
+        return pool
+
 
 class MNISTLogReg:
     def __init__(self):
@@ -174,7 +247,9 @@ class MNISTConvNet:
         # note, 'NCHW' is only supported on GPUs
         self.data_format = 'NHWC'
         self.n_classes = 10
-        self.layer_creator = LayerCreator('l2', 0.0001)
+        self.layer_creator = LayerCreator(
+            'l2', 0.0001, use_batch_norm, self.data_format
+        )
 
     def _create_summaries(self):
         base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
@@ -207,121 +282,55 @@ class MNISTConvNet:
         )
         self.is_training = tf.placeholder(tf.bool, name='is_training')
         lc = self.layer_creator
-
-        def make_wbkernels(
-                name, shp, initializer=xavier_init(uniform=False),
-        ):
-            """ make weights, biases, kernels """
-            return tf.get_variable(
-                name, shp, initializer=initializer, regularizer=self.reg
-            )
-
-        def make_fc_layer(
-                inp_lyr, name_w, shp_w, name_b=None, shp_b=None
-        ):
-            """ assume if shp_b is None that we are using batch norm. """
-            if shp_b is None and self.use_batch_norm:
-                W = lc.make_wbkernels(name_w, shp_w)
-                fc_lyr = tf.matmul(inp_lyr, W, name='matmul')
-                fc_lyr = tf.contrib.layers.batch_norm(
-                    fc_lyr, center=True, scale=True,
-                    data_format=self.data_format, is_training=self.is_training
-                )
-            else:
-                W = make_wbkernels(name_w, shp_w)
-                b = make_wbkernels(name_b, shp_b)
-                fc_lyr = tf.nn.bias_add(
-                    tf.matmul(inp_lyr, W, name='matmul'), b,
-                    data_format=self.data_format, name='bias_add'
-                )
-            return fc_lyr
-            
-        def make_active_fc_Layer(
-                inp_lyr, name_fc_lyr,
-                name_w, shp_w, name_b=None, shp_b=None, act=tf.nn.relu
-        ):
-            fc_lyr = make_fc_layer(inp_lyr, name_w, shp_w, name_b, shp_b)
-            fc_lyr = act(fc_lyr, name=name_fc_lyr)
-            return fc_lyr
-
-        def make_active_conv(
-                input_lyr, name, kernels, biases=None, act=tf.nn.relu
-        ):
-            conv = tf.nn.conv2d(
-                input_lyr, kernels, strides=[1, 1, 1, 1],
-                padding=self.padding, data_format=self.data_format
-            )
-            if biases is None and self.use_batch_norm:
-                # TODO - test `activation_fun` argument
-                return act(tf.contrib.layers.batch_norm(
-                    conv, center=True, scale=True,
-                    data_format=self.data_format, is_training=self.is_training
-                ))
-            else:
-                return act(tf.nn.bias_add(
-                    conv, biases, data_format=self.data_format, name=name
-                ))
-
-        def make_pool(input_lyr, name):
-            if self.data_format == 'NHWC':
-                ksize = [1, 2, 2, 1]
-                strides = [1, 2, 2, 1]
-            elif self.data_format == 'NCHW':
-                ksize = [1, 1, 2, 2]
-                strides = [1, 1, 2, 2]
-            else:
-                raise ValueError('Invalid data format!')
-            pool = tf.nn.max_pool(
-                input_lyr, ksize=ksize, strides=strides,
-                padding=self.padding, data_format=self.data_format,
-                name=name
-            )
-            return pool
+        lc.set_is_training_placeholder(self.is_training)
 
         with tf.variable_scope('io'):
             self.X_img = features
 
         with tf.variable_scope('model'):
             with tf.variable_scope('conv1'):
-                self.kernels1 = make_wbkernels('kernels', [5, 5, 1, 32])
+                self.kernels1 = lc.make_wbkernels('kernels', [5, 5, 1, 32])
                 self.biases1 = None if self.use_batch_norm else \
-                    make_wbkernels('biases', [32])
-                self.conv1 = make_active_conv(
+                    lc.make_wbkernels('biases', [32])
+                self.conv1 = lc.make_active_conv(
                     self.X_img, 'relu_conv1', self.kernels1, self.biases1,
                 )
 
             with tf.variable_scope('pool1'):
-                self.pool1 = make_pool(self.conv1, name='pool1')
+                self.pool1 = lc.make_pool(self.conv1, name='pool1')
 
             with tf.variable_scope('conv2'):
-                self.kernels2 = make_wbkernels('kernels', [5, 5, 32, 64])
+                self.kernels2 = lc.make_wbkernels('kernels', [5, 5, 32, 64])
                 self.biases2 = None if self.use_batch_norm else \
-                    make_wbkernels('biases', [64])
-                self.conv2 = make_active_conv(
+                    lc.make_wbkernels('biases', [64])
+                self.conv2 = lc.make_active_conv(
                     self.pool1, 'relu_conv2', self.kernels2, self.biases2,
                 )
 
             with tf.variable_scope('pool2'):
-                self.pool2 = make_pool(self.conv2, name='pool2')
+                self.pool2 = lc.make_pool(self.conv2, name='pool2')
 
             with tf.variable_scope('fc'):
                 # use weight of dimension 7 * 7 * 64 x 1024
                 input_features = 7 * 7 * 64
                 # reshape pool2 to 2 dimensional
                 self.pool2 = tf.reshape(self.pool2, [-1, input_features])
-                self.fc = make_active_fc_Layer(
+                biases_name = None if self.use_batch_norm else 'biases'
+                biases_shape = None if self.use_batch_norm else [1024]
+                self.fc = lc.make_active_fc_Layer(
                     self.pool2, 'fully_connected',
-                    'weights', [input_features, 1024], 'biases', [1024]
+                    'weights', [input_features, 1024],
+                    biases_name, biases_shape
                 )
                 self.fc = tf.nn.dropout(
                     self.fc, self.dropout_keep_prob, name='relu_dropout'
                 )
 
             with tf.variable_scope('softmax_linear'):
-                self.weights_softmax = make_wbkernels(
+                self.weights_softmax = lc.make_wbkernels(
                     'weights', [1024, self.n_classes]
                 )
-                self.biases_softmax = make_wbkernels(
+                self.biases_softmax = lc.make_wbkernels(
                     'biases', [self.n_classes]
                 )
                 self.logits = tf.nn.bias_add(
