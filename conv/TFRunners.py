@@ -187,7 +187,8 @@ class TFRunnerCategorical:
                             feed_dict={
                                 use_valid: False,
                                 self.model.dropout_keep_prob:
-                                self.dropout_keep_prob
+                                self.dropout_keep_prob,
+                                self.model.is_training: True
                             }
                         )
                         writer.add_summary(summary_t, global_step=b_num)
@@ -207,7 +208,8 @@ class TFRunnerCategorical:
                                      self.model.valid_summary_op],
                                     feed_dict={
                                         use_valid: True,
-                                        self.model.dropout_keep_prob: 1.0
+                                        self.model.dropout_keep_prob: 1.0,
+                                        self.model.is_training:False
                                     }
                                 )
                             saver.save(sess, ckpt_dir, b_num)
@@ -310,7 +312,8 @@ class TFRunnerCategorical:
                         loss_batch, logits_batch, Y_batch = sess.run(
                             [self.model.loss, self.model.logits, targets],
                             feed_dict={
-                                self.model.dropout_keep_prob: 1.0
+                                self.model.dropout_keep_prob: 1.0,
+                                self.model.is_training: False
                             }
                         )
                         batch_sz = logits_batch.shape[0]
