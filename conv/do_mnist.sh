@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DAT=`date +%s`
-MODEL_CODE="20171009"
+MODEL_CODE="20171010"
 
 TRAINING="--nodo_training"
 TRAINING="--do_training"
@@ -10,14 +10,14 @@ VALIDATION="--do_validaton"
 TESTING="--nodo_testing"
 TESTING="--do_testing"
 
-CONV="--nodo_conv"
 CONV="--do_conv"
+CONV="--nodo_conv"
 
-SHORT=""
 SHORT="--do_a_short_run"
+SHORT=""
 
-BATCHNORM=""
 BATCHNORM="--do_batch_norm"
+BATCHNORM=""
 
 # data, log, and model logistics
 BASEP="${HOME}/Documents/MINERvA/AI/mnist_tf"
