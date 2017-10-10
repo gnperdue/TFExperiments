@@ -28,7 +28,7 @@ class LayerCreator:
         self.data_format = data_format
         # self.pooling_config?? - must be more flexible
         self.padding = 'SAME'   # TODO must be more flexible
-        # self.dropoug_config??
+        # self.dropout_config??
 
     def set_is_training_placeholder(self, is_training):
         self.is_training = is_training
@@ -103,6 +103,41 @@ class LayerCreator:
             name=name
         )
         return pool
+
+
+def create_train_valid_summaries(loss, accuracy=None, reg_loss=None):
+    base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
+    train_summaries = []
+    valid_summaries = []
+    with tf.name_scope('summaries/train'):
+        train_loss = tf.summary.scalar('loss', loss)
+        train_histo_loss = tf.summary.histogram(
+            'histogram_loss', loss
+        )
+        train_summaries.extend([train_loss, train_histo_loss])
+        if reg_loss is not None:
+            train_reg_loss = tf.summary.scalar('reg_loss', reg_loss)
+            train_summaries.append(train_reg_loss)
+        if accuracy is not None:
+            train_accuracy = tf.summary.scalar('accuracy', accuracy)
+            train_summaries.append(train_accuracy)
+        train_summaries.extend(base_summaries)
+        train_summary_op = tf.summary.merge(train_summaries)
+    with tf.name_scope('summaries/valid'):
+        valid_loss = tf.summary.scalar('loss', loss)
+        valid_histo_loss = tf.summary.histogram(
+            'histogram_loss', loss
+        )
+        valid_summaries.extend([valid_loss, valid_histo_loss])
+        if reg_loss is not None:
+            valid_reg_loss = tf.summary.scalar('reg_loss', reg_loss)
+            valid_summaries.append(valid_reg_loss)
+        if accuracy is not None:
+            valid_accuracy = tf.summary.scalar('accuracy', accuracy)
+            valid_summaries.append(valid_accuracy)
+        valid_summaries.extend(base_summaries)
+        valid_summary_op = tf.summary.merge(valid_summaries)
+    return train_summary_op, valid_summary_op
 
 
 class MNISTLogReg:
@@ -212,6 +247,8 @@ class MNISTLogReg:
         LOGGER.info('Building train op with learning_rate = %f' %
                     learning_rate)
         with tf.variable_scope('training'):
+            # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            # with tf.control_dependencies(update_ops):
             self.optimizer = tf.train.GradientDescentOptimizer(
                 learning_rate=learning_rate
             ).minimize(self.loss, global_step=self.global_step)
@@ -367,6 +404,8 @@ class MNISTConvNet:
         LOGGER.info('Building train op with learning_rate = %f' %
                     learning_rate)
         with tf.name_scope('training'):
+            # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            # with tf.control_dependencies(update_ops):
             self.optimizer = tf.train.AdamOptimizer(
                 learning_rate=learning_rate
             ).minimize(self.loss, global_step=self.global_step)
