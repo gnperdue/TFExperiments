@@ -32,7 +32,7 @@ tf.app.flags.DEFINE_boolean('do_testing', True,
                             """Perform testing ops.""")
 tf.app.flags.DEFINE_boolean('do_conv', True,
                             """Use the conv model.""")
-tf.app.flags.DEFINE_boolean('do_a_short_run', True,
+tf.app.flags.DEFINE_boolean('do_a_short_run', False,
                             """Do a short run.""")
 tf.app.flags.DEFINE_boolean('do_batch_norm', False,
                             """Do batch normalization.""")
@@ -72,11 +72,13 @@ def main(argv=None):
 
     # set up training parameters
     train_params_dict = utils_mnist.make_default_train_params_dict()
+    train_params_dict['DROPOUT_KEEP_PROB'] = 1.0
 
     if FLAGS.do_conv:
         model = ModelsMNIST.MNISTConvNet(use_batch_norm=FLAGS.do_batch_norm)
     else:
-        model = ModelsMNIST.MNISTLogReg()
+        # model = ModelsMNIST.MNISTLogReg()
+        model = ModelsMNIST.MNISTMLP(use_batch_norm=FLAGS.do_batch_norm)
 
     logger.info(' run_params_dict = {}'.format(repr(run_params_dict)))
     logger.info(' train_params_dict = {}'.format(repr(train_params_dict)))
