@@ -34,7 +34,7 @@ class LayerCreator:
         self.is_training = is_training
 
     def make_wbkernels(
-            self, name, shp, initializer=xavier_init(uniform=False),
+            self, name, shp=None, initializer=xavier_init(uniform=False),
     ):
         """ make weights, biases, kernels """
         return tf.get_variable(
@@ -42,30 +42,37 @@ class LayerCreator:
         )
 
     def make_fc_layer(
-            self, inp_lyr, name_w, shp_w, name_b=None, shp_b=None
+            self, inp_lyr, name_w, shp_w,
+            name_b=None, shp_b=None, name=None,
+            initializer=xavier_init(uniform=False)
     ):
         """ assume if shp_b is None that we are using batch norm. """
         if shp_b is None and self.use_batch_norm:
-            W = self.make_wbkernels(name_w, shp_w)
+            W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
             fc_lyr = tf.matmul(inp_lyr, W, name='matmul')
             fc_lyr = tf.contrib.layers.batch_norm(
                 fc_lyr, center=True, scale=True,
-                data_format=self.data_format, is_training=self.is_training
+                data_format=self.data_format, is_training=self.is_training,
+                name=name
             )
         else:
-            W = self.make_wbkernels(name_w, shp_w)
-            b = self.make_wbkernels(name_b, shp_b)
+            lyr_name = 'bias_add' if name is None else name
+            W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
+            b = self.make_wbkernels(name_b, shp_b, initializer=initializer)
             fc_lyr = tf.nn.bias_add(
                 tf.matmul(inp_lyr, W, name='matmul'), b,
-                data_format=self.data_format, name='bias_add'
+                data_format=self.data_format, name=lyr_name,
             )
         return fc_lyr
             
     def make_active_fc_Layer(
             self, inp_lyr, name_fc_lyr,
-            name_w, shp_w, name_b=None, shp_b=None, act=tf.nn.relu
+            name_w, shp_w, name_b=None, shp_b=None,
+            act=tf.nn.relu, initializer=xavier_init(uniform=False)
     ):
-        fc_lyr = self.make_fc_layer(inp_lyr, name_w, shp_w, name_b, shp_b)
+        fc_lyr = self.make_fc_layer(
+            inp_lyr, name_w, shp_w, name_b, shp_b, initializer=initializer
+        )
         fc_lyr = act(fc_lyr, name=name_fc_lyr)
         return fc_lyr
 
@@ -140,6 +147,43 @@ def create_train_valid_summaries(loss, accuracy=None, reg_loss=None):
     return train_summary_op, valid_summary_op
 
 
+def compute_categorical_loss_and_accuracy(logits, targets):
+    """return total loss, reg loss (subset of total), and accuracy"""
+    with tf.variable_scope('loss'):
+        regularization_losses = sum(
+            tf.get_collection(
+                tf.GraphKeys.REGULARIZATION_LOSSES
+            )
+        )
+        loss = tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(
+                logits=logits, labels=targets
+            ),
+            axis=0,
+            name='loss'
+        ) + regularization_losses
+        preds = tf.nn.softmax(logits, name='preds')
+        correct_preds = tf.equal(
+            tf.argmax(preds, 1), tf.argmax(targets, 1),
+            name='correct_preds'
+        )
+        accuracy = tf.divide(
+            tf.reduce_sum(tf.cast(correct_preds, tf.float32)),
+            tf.cast(tf.shape(targets)[0], tf.float32),
+            name='accuracy'
+        )
+    return loss, regularization_losses, accuracy
+
+
+def make_standard_placeholders():
+    dropout_keep_prob = tf.placeholder(tf.float32, name='dropout_keep_prob')
+    global_step = tf.Variable(
+        0, dtype=tf.int32, trainable=False, name='global_step'
+    )
+    is_training = tf.placeholder(tf.bool, name='is_training')
+    return dropout_keep_prob, global_step, is_training
+
+
 class MNISTLogReg:
     def __init__(self):
         self.loss = None
@@ -149,69 +193,39 @@ class MNISTLogReg:
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
         # dropout not used here, but kept for API uniformity
         self.dropout_keep_prob = None
+        self.layer_creator = LayerCreator('l2', 0.0001)
 
     def _create_summaries(self):
-        base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-        with tf.name_scope('summaries/train'):
-            train_loss = tf.summary.scalar('loss', self.loss)
-            train_histo_loss = tf.summary.histogram(
-                'histogram_loss', self.loss
+        self.train_summary_op, self.valid_summary_op =  \
+            create_train_valid_summaries(
+                self.loss, self.accuracy, self.regularization_losses
             )
-            train_reg_loss = tf.summary.scalar(
-                'reg_loss', self.regularization_losses
-            )
-            train_accuracy = tf.summary.scalar('accuracy', self.accuracy)
-            train_summaries = [
-                train_loss, train_histo_loss, train_reg_loss, train_accuracy
-            ]
-            train_summaries.extend(base_summaries)
-            self.train_summary_op = tf.summary.merge(train_summaries)
-        with tf.name_scope('summaries/valid'):
-            valid_loss = tf.summary.scalar('loss', self.loss)
-            valid_histo_loss = tf.summary.histogram(
-                'histogram_loss', self.loss
-            )
-            valid_reg_loss = tf.summary.scalar(
-                'reg_loss', self.regularization_losses
-            )
-            valid_accuracy = tf.summary.scalar('accuracy', self.accuracy)
-            valid_summaries = [
-                valid_loss, valid_histo_loss, valid_reg_loss, valid_accuracy
-            ]
-            valid_summaries.extend(base_summaries)
-            self.valid_summary_op = tf.summary.merge(valid_summaries)
 
     def _build_network(self, features):
 
-        self.dropout_keep_prob = tf.placeholder(
-            tf.float32, name='dropout_keep_prob'
-        )
-        self.global_step = tf.Variable(
-            0, dtype=tf.int32, trainable=False, name='global_step'
-        )
-        # `is_training` not needed here but kept for API uniformity
-        self.is_training = tf.placeholder(tf.bool, name='is_training')
+        self.dropout_keep_prob, self.global_step, self.is_training = \
+            make_standard_placeholders()
+        lc = self.layer_creator
+        lc.set_is_training_placeholder(self.is_training)
 
         with tf.variable_scope('io'):
             self.X = features
 
         with tf.variable_scope('model'):
-            self.W = tf.get_variable(
-                name='weights',
+            W1 = lc.make_wbkernels(
+                name='weights1',
                 initializer=tf.random_normal(
                     shape=[784, 10], mean=0.0, stddev=0.01, dtype=tf.float32
-                ),
-                regularizer=self.reg
+                )
             )
-            self.b = tf.get_variable(
-                name='bias',
+            b1 = lc.make_wbkernels(
+                name='bias1',
                 initializer=tf.random_normal(
                     shape=[10], mean=0.0, stddev=0.01, dtype=tf.float32
-                ),
-                regularizer=self.reg
+                )
             )
             self.logits = tf.add(
-                tf.matmul(self.X, self.W), self.b, name='logits'
+                tf.matmul(self.X, W1), b1, name='logits'
             )
 
     def _set_targets(self, targets):
@@ -219,29 +233,8 @@ class MNISTLogReg:
             self.targets = targets
 
     def _define_loss(self):
-        with tf.variable_scope('loss'):
-            self.regularization_losses = sum(
-                tf.get_collection(
-                    tf.GraphKeys.REGULARIZATION_LOSSES
-                )
-            )
-            self.loss = tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits(
-                    logits=self.logits, labels=self.targets
-                ),
-                axis=0,
-                name='loss'
-            ) + self.regularization_losses
-            preds = tf.nn.softmax(self.logits, name='preds')
-            correct_preds = tf.equal(
-                tf.argmax(preds, 1), tf.argmax(self.targets, 1),
-                name='correct_preds'
-            )
-            self.accuracy = tf.divide(
-                tf.reduce_sum(tf.cast(correct_preds, tf.float32)),
-                tf.cast(tf.shape(self.targets)[0], tf.float32),
-                name='accuracy'
-            )
+        self.loss, self.regularization_losses, self.accuracy = \
+            compute_categorical_loss_and_accuracy(self.logits, self.targets)
 
     def _define_train_op(self, learning_rate):
         LOGGER.info('Building train op with learning_rate = %f' %
@@ -269,6 +262,111 @@ class MNISTLogReg:
 
     def get_output_nodes(self):
         return ['model/logits']
+
+
+class MNISTMLP:
+    def __init__(self, use_batch_norm=False):
+        self.loss = None
+        self.logits = None
+        self.global_step = None
+        self.is_training = None
+        self.use_batch_norm = use_batch_norm
+        # dropout not used here, but kept for API uniformity
+        self.dropout_keep_prob = None
+        self.layer_creator = LayerCreator('l2', 0.0)
+        self.padding = 'SAME'
+        # note, 'NCHW' is only supported on GPUs
+        self.data_format = 'NHWC'
+        self.n_classes = 10
+
+    def _create_summaries(self):
+        self.train_summary_op, self.valid_summary_op =  \
+            create_train_valid_summaries(
+                self.loss, self.accuracy, self.regularization_losses
+            )
+
+    def _build_network(self, features):
+
+        self.dropout_keep_prob, self.global_step, self.is_training = \
+            make_standard_placeholders()
+        lc = self.layer_creator
+        lc.set_is_training_placeholder(self.is_training)
+
+        with tf.variable_scope('io'):
+            self.X = features
+
+        with tf.variable_scope('model'):
+            with tf.variable_scope('fc_lyr1'):
+                biases_name = None if self.use_batch_norm else 'biases'
+                biases_shape = None if self.use_batch_norm else [100]
+                fc_lyr1 = lc.make_active_fc_Layer(
+                    self.X, 'fully_connected',
+                    'weights', [784, 100],
+                    biases_name, biases_shape,
+                    initializer=tf.random_normal_initializer(
+                        mean=0.0, stddev=0.01
+                    )
+                )
+                # fc_lyr1 = tf.nn.dropout(
+                #     fc_lyr1, self.dropout_keep_prob, name='relu_dropout'
+                # )
+            with tf.variable_scope('fc_lyr2'):
+                biases_name = None if self.use_batch_norm else 'biases'
+                biases_shape = None if self.use_batch_norm else [100]
+                fc_lyr2 = lc.make_active_fc_Layer(
+                    fc_lyr1, 'fully_connected',
+                    'weights', [100, 100],
+                    biases_name, biases_shape,
+                    initializer=tf.random_normal_initializer(
+                        mean=0.0, stddev=0.01
+                    )                    
+                )
+                # fc_lyr2 = tf.nn.dropout(
+                #     fc_lyr2, self.dropout_keep_prob, name='relu_dropout'
+                # )
+            with tf.variable_scope('final_linear'):
+                self.logits = lc.make_fc_layer(
+                    fc_lyr2, 'weights', [100, self.n_classes],
+                    'biases', [self.n_classes], 'logits',
+                    initializer=tf.random_normal_initializer(
+                        mean=0.0, stddev=0.01
+                    )
+                )
+
+    def _set_targets(self, targets):
+        with tf.variable_scope('targets'):
+            self.targets = targets
+
+    def _define_loss(self):
+        self.loss, self.regularization_losses, self.accuracy = \
+            compute_categorical_loss_and_accuracy(self.logits, self.targets)
+
+    def _define_train_op(self, learning_rate):
+        LOGGER.info('Building train op with learning_rate = %f' %
+                    learning_rate)
+        with tf.variable_scope('training'):
+            # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            # with tf.control_dependencies(update_ops):
+            self.optimizer = tf.train.GradientDescentOptimizer(
+                learning_rate=learning_rate
+            ).minimize(self.loss, global_step=self.global_step)
+
+    def prepare_for_inference(self, features):
+        self._build_network(features)
+
+    def prepare_for_training(self, targets, learning_rate=0.001):
+        self._set_targets(targets)
+        self._define_loss()
+        self._define_train_op(learning_rate)
+        self._create_summaries()
+
+    def prepare_for_loss_computation(self, targets):
+        self._set_targets(targets)
+        self._define_loss()
+        self._create_summaries()
+
+    def get_output_nodes(self):
+        return ['model/final_linear/logits']
 
 
 class MNISTConvNet:
@@ -311,13 +409,8 @@ class MNISTConvNet:
 
     def _build_network(self, features):
 
-        self.dropout_keep_prob = tf.placeholder(
-            tf.float32, name='dropout_keep_prob'
-        )
-        self.global_step = tf.Variable(
-            0, dtype=tf.int32, trainable=False, name='global_step'
-        )
-        self.is_training = tf.placeholder(tf.bool, name='is_training')
+        self.dropout_keep_prob, self.global_step, self.is_training = \
+            make_standard_placeholders()
         lc = self.layer_creator
         lc.set_is_training_placeholder(self.is_training)
 
