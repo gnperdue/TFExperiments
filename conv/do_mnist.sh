@@ -42,7 +42,7 @@ python run_mnist.py \
   --model_dir $MODELDIR \
   --log_name $LOGFILE $LOGLEVEL \
   $TRAINING $VALIDATION $TESTING $SHORT \
-  $BATCHNORM
+  $BATCHNORM $NEPOCHS
 EOF
 
 python run_mnist.py \
@@ -53,6 +53,6 @@ python run_mnist.py \
   --model_dir $MODELDIR \
   --log_name $LOGFILE $LOGLEVEL \
   $TRAINING $VALIDATION $TESTING $SHORT \
-  $BATCHNORM
+  $BATCHNORM $NEPOCHS
 
 echo "Job finished "`date`""
