@@ -268,7 +268,7 @@ class TFRunnerCategorical:
             with tf.Session(graph=g) as sess:
                 with tf.variable_scope('data_io'):
                     data_reader = MNISTDataReader(
-                        filenames_list=self.train_file_list,
+                        filenames_list=self.test_file_list,
                         batch_size=self.batch_size,
                         name='test',
                         compression=self.file_compression,
