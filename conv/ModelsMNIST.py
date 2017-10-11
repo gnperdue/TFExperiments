@@ -49,11 +49,10 @@ class LayerCreator:
         """ assume if shp_b is None that we are using batch norm. """
         if shp_b is None and self.use_batch_norm:
             W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
-            fc_lyr = tf.matmul(inp_lyr, W, name='matmul')
+            fc_lyr = tf.matmul(inp_lyr, W, name=name)
             fc_lyr = tf.contrib.layers.batch_norm(
                 fc_lyr, center=True, scale=True,
-                data_format=self.data_format, is_training=self.is_training,
-                name=name
+                data_format=self.data_format, is_training=self.is_training
             )
         else:
             lyr_name = 'bias_add' if name is None else name
@@ -273,7 +272,9 @@ class MNISTMLP:
         self.use_batch_norm = use_batch_norm
         # dropout not used here, but kept for API uniformity
         self.dropout_keep_prob = None
-        self.layer_creator = LayerCreator('l2', 0.0)
+        self.layer_creator = LayerCreator(
+            'l2', 0.0, use_batch_norm=self.use_batch_norm
+        )
         self.padding = 'SAME'
         # note, 'NCHW' is only supported on GPUs
         self.data_format = 'NHWC'
