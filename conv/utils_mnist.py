@@ -17,7 +17,7 @@ def make_default_run_params_dict():
     run_params_dict['COMPRESSION'] = None
     run_params_dict['MODEL_DIR'] = '/tmp/mnist'
     run_params_dict['LOAD_SAVED_MODEL'] = True
-    run_params_dict['SAVE_EVRY_N_BATCHES'] = 20
+    run_params_dict['SAVE_EVRY_N_BATCHES'] = 100
     run_params_dict['BE_VERBOSE'] = False
     return run_params_dict
 

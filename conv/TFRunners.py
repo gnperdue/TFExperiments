@@ -209,7 +209,7 @@ class TFRunnerCategorical:
                                     feed_dict={
                                         use_valid: True,
                                         self.model.dropout_keep_prob: 1.0,
-                                        self.model.is_training:False
+                                        self.model.is_training: False
                                     }
                                 )
                             saver.save(sess, ckpt_dir, b_num)
@@ -276,8 +276,7 @@ class TFRunnerCategorical:
                     )
                     targets, features = \
                         self._prep_targets_and_features(
-                            data_reader.batch_generator,
-                            self.num_epochs
+                            data_reader.batch_generator, 1
                         )
 
                 self.model.prepare_for_inference(features)
