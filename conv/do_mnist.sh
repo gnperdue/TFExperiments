@@ -1,7 +1,6 @@
 #!/bin/bash
 
 DAT=`date +%s`
-MODEL_CODE="20171010"
 
 TRAINING="--nodo_training"
 TRAINING="--do_training"
@@ -16,8 +15,12 @@ CONV="--nodo_conv"
 SHORT="--do_a_short_run"
 SHORT=""
 
+NEPOCHS="--num_epochs 10"
+
 BATCHNORM="--do_batch_norm"
 BATCHNORM=""
+
+MODEL_CODE="20171011_nobatch"
 
 # data, log, and model logistics
 BASEP="${HOME}/Documents/MINERvA/AI/mnist_tf"
@@ -25,8 +28,8 @@ FILEPAT="mnist"
 DATADIR="${HOME}/Dropbox/Data/RandomData/TensorFlow/"
 LOGDIR="${BASEP}/logs"
 LOGFILE=$LOGDIR/log_mnv_st_epsilon_${NCLASS}_${MODEL_CODE}_${DAT}.txt
-LOGLEVEL="--log_level INFO"
 LOGLEVEL="--log_level DEBUG"
+LOGLEVEL="--log_level INFO"
 MODELDIR="${BASEP}/models/${NCLASS}/${MODEL_CODE}"
 
 # show what we will do...

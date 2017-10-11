@@ -24,6 +24,8 @@ tf.app.flags.DEFINE_string('log_name', 'temp_log.txt',
                            """Logfile name.""")
 tf.app.flags.DEFINE_string('log_level', 'INFO',
                            """Logging level (INFO/DEBUG/etc.).""")
+tf.app.flags.DEFINE_integer('num_epochs', 1,
+                            """Number of training epochs.""")
 tf.app.flags.DEFINE_boolean('do_training', True,
                             """Perform training ops.""")
 tf.app.flags.DEFINE_boolean('do_validation', True,
@@ -73,6 +75,7 @@ def main(argv=None):
     # set up training parameters
     train_params_dict = utils_mnist.make_default_train_params_dict()
     train_params_dict['DROPOUT_KEEP_PROB'] = 1.0
+    train_params_dict['NUM_EPOCHS'] = FLAGS.num_epochs
 
     if FLAGS.do_conv:
         model = ModelsMNIST.MNISTConvNet(use_batch_norm=FLAGS.do_batch_norm)
