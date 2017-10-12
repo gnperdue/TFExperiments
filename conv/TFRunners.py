@@ -193,7 +193,7 @@ class TFRunnerCategorical:
                         )
                         writer.add_summary(summary_t, global_step=b_num)
                         LOGGER.info(
-                            '  Train loss at batch {}: {:5.1f}'.format(
+                            '  Train loss at batch {}: {:7.5f}'.format(
                                 b_num, loss
                             )
                         )
@@ -225,7 +225,7 @@ class TFRunnerCategorical:
                                 accuracy
                             ))
                             LOGGER.info(
-                                '  Valid loss at batch {}: {:5.1f}'.format(
+                                '  Valid loss at batch {}: {:7.5f}'.format(
                                     b_num, loss
                                 )
                             )

@@ -42,37 +42,45 @@ class LayerCreator:
         )
 
     def make_fc_layer(
-            self, inp_lyr, name_w, shp_w,
-            name_b=None, shp_b=None, name=None,
+            self, inp_lyr, name_fc_lyr, name_w, shp_w,
+            name_b=None, shp_b=None,
             initializer=xavier_init(uniform=False)
     ):
-        """ assume if shp_b is None that we are using batch norm. """
-        if shp_b is None and self.use_batch_norm:
+        if self.use_batch_norm:
             W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
-            fc_lyr = tf.matmul(inp_lyr, W, name=name)
+            b = self.make_wbkernels(
+                name_b, shp_b, initializer=tf.zeros_initializer()
+            )
+            # fc_lyr = tf.matmul(inp_lyr, W, name=name_fc_lyr+'_matmul')
+            fc_lyr = tf.nn.bias_add(
+                tf.matmul(inp_lyr, W, name=name_fc_lyr+'_matmul'), b,
+                data_format=self.data_format, name=name_fc_lyr,
+            )
             fc_lyr = tf.contrib.layers.batch_norm(
                 fc_lyr, center=True, scale=True,
                 data_format=self.data_format, is_training=self.is_training
             )
         else:
-            lyr_name = 'bias_add' if name is None else name
             W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
-            b = self.make_wbkernels(name_b, shp_b, initializer=initializer)
+            b = self.make_wbkernels(
+                name_b, shp_b, initializer=tf.zeros_initializer()
+            )
             fc_lyr = tf.nn.bias_add(
-                tf.matmul(inp_lyr, W, name='matmul'), b,
-                data_format=self.data_format, name=lyr_name,
+                tf.matmul(inp_lyr, W, name=name_fc_lyr+'_matmul'), b,
+                data_format=self.data_format, name=name_fc_lyr,
             )
         return fc_lyr
             
-    def make_active_fc_Layer(
+    def make_active_fc_layer(
             self, inp_lyr, name_fc_lyr,
             name_w, shp_w, name_b=None, shp_b=None,
             act=tf.nn.relu, initializer=xavier_init(uniform=False)
     ):
         fc_lyr = self.make_fc_layer(
-            inp_lyr, name_w, shp_w, name_b, shp_b, initializer=initializer
+            inp_lyr, name_fc_lyr, name_w, shp_w, name_b, shp_b,
+            initializer=initializer
         )
-        fc_lyr = act(fc_lyr, name=name_fc_lyr)
+        fc_lyr = act(fc_lyr, name=name_fc_lyr+'_act')
         return fc_lyr
 
     def make_active_conv(
@@ -80,7 +88,8 @@ class LayerCreator:
     ):
         conv = tf.nn.conv2d(
             input_lyr, kernels, strides=[1, 1, 1, 1],
-            padding=self.padding, data_format=self.data_format
+            padding=self.padding, data_format=self.data_format,
+            name=name
         )
         if biases is None and self.use_batch_norm:
             # TODO - test `activation_fun` argument
@@ -90,7 +99,7 @@ class LayerCreator:
             ))
         else:
             return act(tf.nn.bias_add(
-                conv, biases, data_format=self.data_format, name=name
+                conv, biases, data_format=self.data_format, name=name+'_act'
             ))
 
     def make_pool(self, input_lyr, name):
@@ -239,8 +248,6 @@ class MNISTLogReg:
         LOGGER.info('Building train op with learning_rate = %f' %
                     learning_rate)
         with tf.variable_scope('training'):
-            # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            # with tf.control_dependencies(update_ops):
             self.optimizer = tf.train.GradientDescentOptimizer(
                 learning_rate=learning_rate
             ).minimize(self.loss, global_step=self.global_step)
@@ -270,14 +277,12 @@ class MNISTMLP:
         self.global_step = None
         self.is_training = None
         self.use_batch_norm = use_batch_norm
-        # dropout not used here, but kept for API uniformity
         self.dropout_keep_prob = None
-        self.layer_creator = LayerCreator(
-            'l2', 0.0, use_batch_norm=self.use_batch_norm
-        )
         self.padding = 'SAME'
-        # note, 'NCHW' is only supported on GPUs
         self.data_format = 'NHWC'
+        self.layer_creator = LayerCreator(
+            'l2', 0.0, self.use_batch_norm, self.data_format
+        )
         self.n_classes = 10
 
     def _create_summaries(self):
@@ -298,40 +303,56 @@ class MNISTMLP:
 
         with tf.variable_scope('model'):
             with tf.variable_scope('fc_lyr1'):
-                biases_name = None if self.use_batch_norm else 'biases'
-                biases_shape = None if self.use_batch_norm else [100]
-                fc_lyr1 = lc.make_active_fc_Layer(
+                # biases_name = None if self.use_batch_norm else 'biases'
+                # biases_shape = None if self.use_batch_norm else [100]
+                biases_name = 'biases'
+                biases_shape = [100]
+                fc_lyr1 = lc.make_active_fc_layer(
                     self.X, 'fully_connected',
                     'weights', [784, 100],
                     biases_name, biases_shape,
-                    initializer=tf.random_normal_initializer(
-                        mean=0.0, stddev=0.01
-                    )
+                    # initializer=tf.random_normal_initializer(
+                    #     mean=0.0, stddev=0.01
+                    # )
                 )
                 # fc_lyr1 = tf.nn.dropout(
                 #     fc_lyr1, self.dropout_keep_prob, name='relu_dropout'
                 # )
             with tf.variable_scope('fc_lyr2'):
-                biases_name = None if self.use_batch_norm else 'biases'
-                biases_shape = None if self.use_batch_norm else [100]
-                fc_lyr2 = lc.make_active_fc_Layer(
+                # biases_name = None if self.use_batch_norm else 'biases'
+                # biases_shape = None if self.use_batch_norm else [100]
+                biases_name = 'biases'
+                biases_shape = [100]
+                fc_lyr2 = lc.make_active_fc_layer(
                     fc_lyr1, 'fully_connected',
                     'weights', [100, 100],
                     biases_name, biases_shape,
-                    initializer=tf.random_normal_initializer(
-                        mean=0.0, stddev=0.01
-                    )
+                    # initializer=tf.random_normal_initializer(
+                    #     mean=0.0, stddev=0.01
+                    # )
                 )
                 # fc_lyr2 = tf.nn.dropout(
                 #     fc_lyr2, self.dropout_keep_prob, name='relu_dropout'
                 # )
             with tf.variable_scope('final_linear'):
-                self.logits = lc.make_fc_layer(
-                    fc_lyr2, 'weights', [100, self.n_classes],
-                    'biases', [self.n_classes], 'logits',
-                    initializer=tf.random_normal_initializer(
-                        mean=0.0, stddev=0.01
-                    )
+                # self.logits = lc.make_fc_layer(
+                #     fc_lyr2, 'logits',
+                #     'weights', [100, self.n_classes],
+                #     'biases', [self.n_classes],
+                #     # initializer=tf.random_normal_initializer(
+                #     #     mean=0.0, stddev=0.01
+                #     # )
+                # )
+                W = lc.make_wbkernels(
+                    'weights', [100, self.n_classes]
+                )
+                b = lc.make_wbkernels(
+                    'biases', [self.n_classes],
+                    initializer=tf.zeros_initializer()
+                )
+                self.logits = tf.nn.bias_add(
+                    tf.matmul(fc_lyr2, W, name='matmul'), b,
+                    data_format=self.data_format, name='logits',
                 )
 
     def _set_targets(self, targets):
@@ -380,7 +401,6 @@ class MNISTConvNet:
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
         self.dropout_keep_prob = None
         self.padding = 'SAME'
-        # note, 'NCHW' is only supported on GPUs
         self.data_format = 'NHWC'
         self.n_classes = 10
         self.layer_creator = LayerCreator(
@@ -448,7 +468,7 @@ class MNISTConvNet:
                 self.pool2 = tf.reshape(self.pool2, [-1, input_features])
                 biases_name = None if self.use_batch_norm else 'biases'
                 biases_shape = None if self.use_batch_norm else [1024]
-                self.fc = lc.make_active_fc_Layer(
+                self.fc = lc.make_active_fc_layer(
                     self.pool2, 'fully_connected',
                     'weights', [input_features, 1024],
                     biases_name, biases_shape
