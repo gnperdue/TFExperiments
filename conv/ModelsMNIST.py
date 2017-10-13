@@ -24,9 +24,9 @@ class LayerCreator:
                 is not implemented yet.'
             )
         self.use_batch_norm = use_batch_norm
+        self.batch_norm_decay = 0.999
         self.is_training = None
         self.data_format = data_format
-        # self.pooling_config?? - must be more flexible
         self.padding = 'SAME'   # TODO must be more flexible
         # self.dropout_config??
 
@@ -42,32 +42,23 @@ class LayerCreator:
         )
 
     def make_fc_layer(
-            self, inp_lyr, name_fc_lyr, name_w, shp_w,
-            name_b=None, shp_b=None,
+            self, inp_lyr, name_fc_lyr,
+            name_w, shp_w, name_b=None, shp_b=None,
             initializer=xavier_init(uniform=False)
     ):
+        """ TODO - regularize batch norm params? """
+        W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
+        b = self.make_wbkernels(
+            name_b, shp_b, initializer=tf.zeros_initializer()
+        )
+        fc_lyr = tf.nn.bias_add(
+            tf.matmul(inp_lyr, W, name=name_fc_lyr+'_matmul'), b,
+            data_format=self.data_format, name=name_fc_lyr,
+        )
         if self.use_batch_norm:
-            W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
-            b = self.make_wbkernels(
-                name_b, shp_b, initializer=tf.zeros_initializer()
-            )
-            # fc_lyr = tf.matmul(inp_lyr, W, name=name_fc_lyr+'_matmul')
-            fc_lyr = tf.nn.bias_add(
-                tf.matmul(inp_lyr, W, name=name_fc_lyr+'_matmul'), b,
-                data_format=self.data_format, name=name_fc_lyr,
-            )
             fc_lyr = tf.contrib.layers.batch_norm(
-                fc_lyr, center=True, scale=True,
+                fc_lyr, decay=self.batch_norm_decay, center=True, scale=True,
                 data_format=self.data_format, is_training=self.is_training
-            )
-        else:
-            W = self.make_wbkernels(name_w, shp_w, initializer=initializer)
-            b = self.make_wbkernels(
-                name_b, shp_b, initializer=tf.zeros_initializer()
-            )
-            fc_lyr = tf.nn.bias_add(
-                tf.matmul(inp_lyr, W, name=name_fc_lyr+'_matmul'), b,
-                data_format=self.data_format, name=name_fc_lyr,
             )
         return fc_lyr
             
@@ -76,16 +67,15 @@ class LayerCreator:
             name_w, shp_w, name_b=None, shp_b=None,
             act=tf.nn.relu, initializer=xavier_init(uniform=False)
     ):
-        fc_lyr = self.make_fc_layer(
+        return act(self.make_fc_layer(
             inp_lyr, name_fc_lyr, name_w, shp_w, name_b, shp_b,
             initializer=initializer
-        )
-        fc_lyr = act(fc_lyr, name=name_fc_lyr+'_act')
-        return fc_lyr
+        ), name=name_fc_lyr+'_act')
 
     def make_active_conv(
             self, input_lyr, name, kernels, biases=None, act=tf.nn.relu
     ):
+        """ TODO - regularize batch norm params? biases? """
         conv = tf.nn.conv2d(
             input_lyr, kernels, strides=[1, 1, 1, 1],
             padding=self.padding, data_format=self.data_format,
@@ -94,7 +84,7 @@ class LayerCreator:
         if biases is None and self.use_batch_norm:
             # TODO - test `activation_fun` argument
             return act(tf.contrib.layers.batch_norm(
-                conv, center=True, scale=True,
+                conv, decay=self.batch_norm_decay, center=True, scale=True,
                 data_format=self.data_format, is_training=self.is_training
             ))
         else:
@@ -102,28 +92,32 @@ class LayerCreator:
                 conv, biases, data_format=self.data_format, name=name+'_act'
             ))
 
-    def make_pool(self, input_lyr, name):
-        """ TODO - size and strides must be more flexible """
+    def make_pool(
+            self, input_lyr, name, h_step=2, w_step=2, n_step=1, c_step=1,
+            padding=None
+    ):
+        padding = padding or self.padding
         if self.data_format == 'NHWC':
-            ksize = [1, 2, 2, 1]
-            strides = [1, 2, 2, 1]
+            ksize = [n_step, h_step, w_step, c_step]
+            strides = [n_step, h_step, w_step, c_step]
         elif self.data_format == 'NCHW':
-            ksize = [1, 1, 2, 2]
-            strides = [1, 1, 2, 2]
+            ksize = [n_step, c_step, h_step, w_step]
+            strides = [n_step, c_step, h_step, w_step]
         else:
             raise ValueError('Invalid data format!')
         pool = tf.nn.max_pool(
             input_lyr, ksize=ksize, strides=strides,
-            padding=self.padding, data_format=self.data_format,
-            name=name
+            padding=padding, data_format=self.data_format, name=name
         )
         return pool
 
 
-def create_train_valid_summaries(loss, accuracy=None, reg_loss=None):
+def create_train_valid_summaries(
+        loss, accuracy=None, reg_loss=None, do_valid=True
+):
     base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-    train_summaries = []
-    valid_summaries = []
+    train_summaries, valid_summaries = [], []
+    train_summary_op, valid_summary_op = None, None
     with tf.name_scope('summaries/train'):
         train_loss = tf.summary.scalar('loss', loss)
         train_histo_loss = tf.summary.histogram(
@@ -138,20 +132,21 @@ def create_train_valid_summaries(loss, accuracy=None, reg_loss=None):
             train_summaries.append(train_accuracy)
         train_summaries.extend(base_summaries)
         train_summary_op = tf.summary.merge(train_summaries)
-    with tf.name_scope('summaries/valid'):
-        valid_loss = tf.summary.scalar('loss', loss)
-        valid_histo_loss = tf.summary.histogram(
-            'histogram_loss', loss
-        )
-        valid_summaries.extend([valid_loss, valid_histo_loss])
-        if reg_loss is not None:
-            valid_reg_loss = tf.summary.scalar('reg_loss', reg_loss)
-            valid_summaries.append(valid_reg_loss)
-        if accuracy is not None:
-            valid_accuracy = tf.summary.scalar('accuracy', accuracy)
-            valid_summaries.append(valid_accuracy)
-        valid_summaries.extend(base_summaries)
-        valid_summary_op = tf.summary.merge(valid_summaries)
+    if do_valid:
+        with tf.name_scope('summaries/valid'):
+            valid_loss = tf.summary.scalar('loss', loss)
+            valid_histo_loss = tf.summary.histogram(
+                'histogram_loss', loss
+            )
+            valid_summaries.extend([valid_loss, valid_histo_loss])
+            if reg_loss is not None:
+                valid_reg_loss = tf.summary.scalar('reg_loss', reg_loss)
+                valid_summaries.append(valid_reg_loss)
+            if accuracy is not None:
+                valid_accuracy = tf.summary.scalar('accuracy', accuracy)
+                valid_summaries.append(valid_accuracy)
+            valid_summaries.extend(base_summaries)
+            valid_summary_op = tf.summary.merge(valid_summaries)
     return train_summary_op, valid_summary_op
 
 
@@ -271,12 +266,13 @@ class MNISTLogReg:
 
 
 class MNISTMLP:
-    def __init__(self, use_batch_norm=False):
+    def __init__(self, use_batch_norm=False, use_dropout=False):
         self.loss = None
         self.logits = None
         self.global_step = None
         self.is_training = None
         self.use_batch_norm = use_batch_norm
+        self.use_dropout = use_dropout
         self.dropout_keep_prob = None
         self.padding = 'SAME'
         self.data_format = 'NHWC'
@@ -303,48 +299,37 @@ class MNISTMLP:
 
         with tf.variable_scope('model'):
             with tf.variable_scope('fc_lyr1'):
-                # biases_name = None if self.use_batch_norm else 'biases'
-                # biases_shape = None if self.use_batch_norm else [100]
-                biases_name = 'biases'
-                biases_shape = [100]
                 fc_lyr1 = lc.make_active_fc_layer(
                     self.X, 'fully_connected',
                     'weights', [784, 100],
-                    biases_name, biases_shape,
-                    # initializer=tf.random_normal_initializer(
-                    #     mean=0.0, stddev=0.01
-                    # )
+                    'biases', [100],
+                    initializer=tf.random_normal_initializer(
+                        mean=0.0, stddev=0.01
+                    )
                 )
-                # fc_lyr1 = tf.nn.dropout(
-                #     fc_lyr1, self.dropout_keep_prob, name='relu_dropout'
-                # )
+                if self.use_dropout:
+                    fc_lyr1 = tf.nn.dropout(
+                        fc_lyr1, self.dropout_keep_prob, name='relu_dropout'
+                    )
             with tf.variable_scope('fc_lyr2'):
-                # biases_name = None if self.use_batch_norm else 'biases'
-                # biases_shape = None if self.use_batch_norm else [100]
-                biases_name = 'biases'
-                biases_shape = [100]
                 fc_lyr2 = lc.make_active_fc_layer(
                     fc_lyr1, 'fully_connected',
                     'weights', [100, 100],
-                    biases_name, biases_shape,
-                    # initializer=tf.random_normal_initializer(
-                    #     mean=0.0, stddev=0.01
-                    # )
+                    'biases', [100],
+                    initializer=tf.random_normal_initializer(
+                        mean=0.0, stddev=0.01
+                    )
                 )
-                # fc_lyr2 = tf.nn.dropout(
-                #     fc_lyr2, self.dropout_keep_prob, name='relu_dropout'
-                # )
+                if self.use_dropout:
+                    fc_lyr2 = tf.nn.dropout(
+                        fc_lyr2, self.dropout_keep_prob, name='relu_dropout'
+                    )
             with tf.variable_scope('final_linear'):
-                # self.logits = lc.make_fc_layer(
-                #     fc_lyr2, 'logits',
-                #     'weights', [100, self.n_classes],
-                #     'biases', [self.n_classes],
-                #     # initializer=tf.random_normal_initializer(
-                #     #     mean=0.0, stddev=0.01
-                #     # )
-                # )
                 W = lc.make_wbkernels(
-                    'weights', [100, self.n_classes]
+                    'weights', [100, self.n_classes],
+                    initializer=tf.random_normal_initializer(
+                        mean=0.0, stddev=0.01
+                    )
                 )
                 b = lc.make_wbkernels(
                     'biases', [self.n_classes],

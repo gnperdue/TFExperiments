@@ -17,12 +17,12 @@ SHORT=""
 
 NEPOCHS="--num_epochs 10"
 
-BATCHNORM=""
 BATCHNORM="--do_batch_norm"
+BATCHNORM=""
 
-MODEL_CODE="20171012_logreg"
-MODEL_CODE="20171012_nobatch"
-MODEL_CODE="20171012_batch"
+MODEL_CODE="20171013_logreg"
+MODEL_CODE="20171013_batch"
+MODEL_CODE="20171013_nobatch"
 
 # data, log, and model logistics
 BASEP="${HOME}/Documents/MINERvA/AI/mnist_tf"
