@@ -73,11 +73,12 @@ class LayerCreator:
         ), name=name_fc_lyr+'_act')
 
     def make_active_conv(
-            self, input_lyr, name, kernels, biases=None, act=tf.nn.relu
+            self, input_lyr, name, kernels,
+            biases=None, act=tf.nn.relu, strides=[1, 1, 1, 1]
     ):
         """ TODO - regularize batch norm params? biases? """
         conv = tf.nn.conv2d(
-            input_lyr, kernels, strides=[1, 1, 1, 1],
+            input_lyr, kernels, strides=strides,
             padding=self.padding, data_format=self.data_format,
             name=name
         )
@@ -393,25 +394,10 @@ class MNISTConvNet:
         )
 
     def _create_summaries(self):
-        base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-        with tf.name_scope('summaries/train'):
-            train_loss = tf.summary.scalar('loss', self.loss)
-            train_histo_loss = tf.summary.histogram(
-                'histogram_loss', self.loss
+        self.train_summary_op, self.valid_summary_op =  \
+            create_train_valid_summaries(
+                self.loss, self.accuracy, self.regularization_losses
             )
-            train_accuracy = tf.summary.scalar('accuracy', self.accuracy)
-            train_summaries = [train_loss, train_histo_loss, train_accuracy]
-            train_summaries.extend(base_summaries)
-            self.train_summary_op = tf.summary.merge(train_summaries)
-        with tf.name_scope('summaries/valid'):
-            valid_loss = tf.summary.scalar('loss', self.loss)
-            valid_histo_loss = tf.summary.histogram(
-                'histogram_loss', self.loss
-            )
-            valid_accuracy = tf.summary.scalar('accuracy', self.accuracy)
-            valid_summaries = [valid_loss, valid_histo_loss, valid_accuracy]
-            valid_summaries.extend(base_summaries)
-            self.valid_summary_op = tf.summary.merge(valid_summaries)
 
     def _build_network(self, features):
 
@@ -427,7 +413,9 @@ class MNISTConvNet:
             with tf.variable_scope('conv1'):
                 self.kernels1 = lc.make_wbkernels('kernels', [5, 5, 1, 32])
                 self.biases1 = None if self.use_batch_norm else \
-                    lc.make_wbkernels('biases', [32])
+                    lc.make_wbkernels(
+                        'biases', [32], initializer=tf.zeros_initializer()
+                    )
                 self.conv1 = lc.make_active_conv(
                     self.X_img, 'relu_conv1', self.kernels1, self.biases1,
                 )
@@ -438,7 +426,9 @@ class MNISTConvNet:
             with tf.variable_scope('conv2'):
                 self.kernels2 = lc.make_wbkernels('kernels', [5, 5, 32, 64])
                 self.biases2 = None if self.use_batch_norm else \
-                    lc.make_wbkernels('biases', [64])
+                    lc.make_wbkernels(
+                        'biases', [64], initializer=tf.zeros_initializer()
+                    )
                 self.conv2 = lc.make_active_conv(
                     self.pool1, 'relu_conv2', self.kernels2, self.biases2,
                 )
@@ -451,12 +441,13 @@ class MNISTConvNet:
                 input_features = 7 * 7 * 64
                 # reshape pool2 to 2 dimensional
                 self.pool2 = tf.reshape(self.pool2, [-1, input_features])
-                biases_name = None if self.use_batch_norm else 'biases'
-                biases_shape = None if self.use_batch_norm else [1024]
                 self.fc = lc.make_active_fc_layer(
                     self.pool2, 'fully_connected',
                     'weights', [input_features, 1024],
-                    biases_name, biases_shape
+                    'biases', [1024],
+                    initializer=tf.random_normal_initializer(
+                        mean=0.0, stddev=0.01
+                    )                    
                 )
                 self.fc = tf.nn.dropout(
                     self.fc, self.dropout_keep_prob, name='relu_dropout'
@@ -480,24 +471,8 @@ class MNISTConvNet:
             self.targets = targets
 
     def _define_loss(self):
-        with tf.variable_scope('loss'):
-            self.loss = tf.reduce_mean(
-                tf.nn.softmax_cross_entropy_with_logits(
-                    logits=self.logits, labels=self.targets
-                ),
-                axis=0,
-                name='loss'
-            )
-            preds = tf.nn.softmax(self.logits, name='preds')
-            correct_preds = tf.equal(
-                tf.argmax(preds, 1), tf.argmax(self.targets, 1),
-                name='correct_preds'
-            )
-            self.accuracy = tf.divide(
-                tf.reduce_sum(tf.cast(correct_preds, tf.float32)),
-                tf.cast(tf.shape(self.targets)[0], tf.float32),
-                name='accuracy'
-            )
+        self.loss, self.regularization_losses, self.accuracy = \
+            compute_categorical_loss_and_accuracy(self.logits, self.targets)
 
     def _define_train_op(self, learning_rate):
         LOGGER.info('Building train op with learning_rate = %f' %

@@ -9,20 +9,20 @@ VALIDATION="--do_validaton"
 TESTING="--nodo_testing"
 TESTING="--do_testing"
 
-CONV="--do_conv"
 CONV="--nodo_conv"
+CONV="--do_conv"
 
 SHORT="--do_a_short_run"
 SHORT=""
 
-NEPOCHS="--num_epochs 10"
+NEPOCHS="--num_epochs 3"
 
 BATCHNORM="--do_batch_norm"
 BATCHNORM=""
 
-MODEL_CODE="20171013_logreg"
-MODEL_CODE="20171013_batch"
-MODEL_CODE="20171013_nobatch"
+MODEL_CODE="20171014_logreg"
+MODEL_CODE="20171014_batch"
+MODEL_CODE="20171014_nobatch"
 
 # data, log, and model logistics
 BASEP="${HOME}/Documents/MINERvA/AI/mnist_tf"
