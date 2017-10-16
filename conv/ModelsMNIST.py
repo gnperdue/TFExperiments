@@ -353,11 +353,11 @@ class MNISTMLP:
         LOGGER.info('Building train op with learning_rate = %f' %
                     learning_rate)
         with tf.variable_scope('training'):
-            # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            # with tf.control_dependencies(update_ops):
-            self.optimizer = tf.train.GradientDescentOptimizer(
-                learning_rate=learning_rate
-            ).minimize(self.loss, global_step=self.global_step)
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(update_ops):
+                self.optimizer = tf.train.GradientDescentOptimizer(
+                    learning_rate=learning_rate
+                ).minimize(self.loss, global_step=self.global_step)
 
     def prepare_for_inference(self, features):
         self._build_network(features)
@@ -478,11 +478,11 @@ class MNISTConvNet:
         LOGGER.info('Building train op with learning_rate = %f' %
                     learning_rate)
         with tf.name_scope('training'):
-            # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            # with tf.control_dependencies(update_ops):
-            self.optimizer = tf.train.AdamOptimizer(
-                learning_rate=learning_rate
-            ).minimize(self.loss, global_step=self.global_step)
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            with tf.control_dependencies(update_ops):
+                self.optimizer = tf.train.AdamOptimizer(
+                    learning_rate=learning_rate
+                ).minimize(self.loss, global_step=self.global_step)
 
     def prepare_for_inference(self, features):
         self._build_network(features)
