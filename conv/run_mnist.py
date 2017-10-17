@@ -38,6 +38,8 @@ tf.app.flags.DEFINE_boolean('do_a_short_run', False,
                             """Do a short run.""")
 tf.app.flags.DEFINE_boolean('do_batch_norm', False,
                             """Do batch normalization.""")
+tf.app.flags.DEFINE_float('learning_rate', 0.01,
+                          """Learning rate.""")
 
 
 def main(argv=None):
@@ -76,6 +78,7 @@ def main(argv=None):
     train_params_dict = utils_mnist.make_default_train_params_dict()
     train_params_dict['DROPOUT_KEEP_PROB'] = 1.0
     train_params_dict['NUM_EPOCHS'] = FLAGS.num_epochs
+    train_params_dict['LEARNING_RATE'] = FLAGS.learning_rate
 
     if FLAGS.do_conv:
         model = ModelsMNIST.MNISTConvNet(use_batch_norm=FLAGS.do_batch_norm)

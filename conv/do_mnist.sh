@@ -9,21 +9,24 @@ VALIDATION="--do_validaton"
 TESTING="--nodo_testing"
 TESTING="--do_testing"
 
-CONV="--do_conv"
 CONV="--nodo_conv"
+CONV="--do_conv"
 
 NEPOCHS="--num_epochs 3"
-NEPOCHS="--num_epochs 10"
+NEPOCHS="--num_epochs 1"
 
 SHORT="--do_a_short_run"
 SHORT=""
 
-BATCHNORM=""
 BATCHNORM="--do_batch_norm"
+BATCHNORM=""
 
-MODEL_CODE="20171016_logreg"
-MODEL_CODE="20171016_nobatch"
-MODEL_CODE="20171016_batch"
+LRATE="--learning_rate 0.01"
+LRATE="--learning_rate 0.05"
+
+MODEL_CODE="20171017_logreg"
+MODEL_CODE="20171017_batch"
+MODEL_CODE="20171017_nobatch"
 
 # data, log, and model logistics
 BASEP="${HOME}/Documents/MINERvA/AI/mnist_tf"
@@ -45,7 +48,7 @@ python run_mnist.py \
   --model_dir $MODELDIR \
   --log_name $LOGFILE $LOGLEVEL \
   $TRAINING $VALIDATION $TESTING $SHORT \
-  $BATCHNORM $NEPOCHS
+  $BATCHNORM $NEPOCHS $LRATE
 EOF
 
 python run_mnist.py \
@@ -56,6 +59,6 @@ python run_mnist.py \
   --model_dir $MODELDIR \
   --log_name $LOGFILE $LOGLEVEL \
   $TRAINING $VALIDATION $TESTING $SHORT \
-  $BATCHNORM $NEPOCHS
+  $BATCHNORM $NEPOCHS $LRATE
 
 echo "Job finished "`date`""
