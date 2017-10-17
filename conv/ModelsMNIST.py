@@ -82,12 +82,19 @@ class LayerCreator:
             padding=self.padding, data_format=self.data_format,
             name=name
         )
-        if biases is None and self.use_batch_norm:
+        if self.use_batch_norm:
             # TODO - test `activation_fun` argument
-            return act(tf.contrib.layers.batch_norm(
-                conv, decay=self.batch_norm_decay, center=True, scale=True,
-                data_format=self.data_format, is_training=self.is_training
-            ))
+            return act(
+                tf.contrib.layers.batch_norm(
+                    tf.nn.bias_add(
+                        conv, biases, data_format=self.data_format,
+                        name=name+'_plus_biases'
+                    ), decay=self.batch_norm_decay,
+                    center=True, scale=True,
+                    data_format=self.data_format, is_training=self.is_training
+                ),
+                name=name+'_act'
+            )
         else:
             return act(tf.nn.bias_add(
                 conv, biases, data_format=self.data_format, name=name+'_act'
@@ -412,10 +419,9 @@ class MNISTConvNet:
         with tf.variable_scope('model'):
             with tf.variable_scope('conv1'):
                 self.kernels1 = lc.make_wbkernels('kernels', [5, 5, 1, 32])
-                self.biases1 = None if self.use_batch_norm else \
-                    lc.make_wbkernels(
-                        'biases', [32], initializer=tf.zeros_initializer()
-                    )
+                self.biases1 = lc.make_wbkernels(
+                    'biases', [32], initializer=tf.zeros_initializer()
+                )
                 self.conv1 = lc.make_active_conv(
                     self.X_img, 'relu_conv1', self.kernels1, self.biases1,
                 )
@@ -425,10 +431,9 @@ class MNISTConvNet:
 
             with tf.variable_scope('conv2'):
                 self.kernels2 = lc.make_wbkernels('kernels', [5, 5, 32, 64])
-                self.biases2 = None if self.use_batch_norm else \
-                    lc.make_wbkernels(
-                        'biases', [64], initializer=tf.zeros_initializer()
-                    )
+                self.biases2 = lc.make_wbkernels(
+                    'biases', [64], initializer=tf.zeros_initializer()
+                )
                 self.conv2 = lc.make_active_conv(
                     self.pool1, 'relu_conv2', self.kernels2, self.biases2,
                 )
