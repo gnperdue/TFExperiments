@@ -9,6 +9,10 @@ import ModelsMNIST
 from TFRunners import TFRunnerCategorical
 import utils_mnist
 
+tf_version = tf.__version__
+print('TF verion: {}'.format(tf_version))
+assert "1.4" <= tf_version, "TF 1.4 or later is required."
+
 FLAGS = tf.app.flags.FLAGS
 
 
