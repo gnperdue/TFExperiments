@@ -7,14 +7,11 @@ LOGGER = logging.getLogger(__name__)
 BATCH_SIZE = 128
 ZLIB_COMP = tf.python_io.TFRecordCompressionType.ZLIB
 GZIP_COMP = tf.python_io.TFRecordCompressionType.GZIP
+NONE_COMP = tf.python_io.TFRecordCompressionType.NONE
 
 
-def make_default_run_params_dict():
+def make_run_params_dict():
     run_params_dict = {}
-    run_params_dict['TRAIN_FILE_LIST'] = None
-    run_params_dict['VALID_FILE_LIST'] = None
-    run_params_dict['TEST_FILE_LIST'] = None
-    run_params_dict['COMPRESSION'] = None
     run_params_dict['MODEL_DIR'] = '/tmp/mnist'
     run_params_dict['LOAD_SAVED_MODEL'] = True
     run_params_dict['SAVE_EVRY_N_BATCHES'] = 100
@@ -22,7 +19,7 @@ def make_default_run_params_dict():
     return run_params_dict
 
 
-def make_default_train_params_dict():
+def make_train_params_dict():
     train_params_dict = {}
     train_params_dict['LEARNING_RATE'] = 0.01
     train_params_dict['BATCH_SIZE'] = BATCH_SIZE
@@ -31,6 +28,33 @@ def make_default_train_params_dict():
     train_params_dict['STRATEGY'] = tf.train.AdamOptimizer
     train_params_dict['DROPOUT_KEEP_PROB'] = 0.75
     return train_params_dict
+
+
+def make_data_reader_dict(
+        filenames_list=None,
+        batch_size=128,
+        name='reader',
+        data_format='NHWC',
+        compression=None,
+        is_image=False
+):
+    data_reader_dict = {}
+    data_reader_dict['FILENAMES_LIST'] = filenames_list
+    data_reader_dict['BATCH_SIZE'] = batch_size
+    data_reader_dict['NAME'] = name
+    data_reader_dict['DATA_FORMAT'] = data_format
+    if compression is None:
+        data_reader_dict['FILE_COMPRESSION'] = NONE_COMP
+    elif compression == 'zz':
+        data_reader_dict['FILE_COMPRESSION'] = ZLIB_COMP
+    elif compression == 'gz':
+        data_reader_dict['FILE_COMPRESSION'] = GZIP_COMP
+    else:
+        msg = 'Invalid compression type in mnv_utils!'
+        LOGGER.error(msg)
+        raise ValueError(msg)
+    data_reader_dict['IS_IMG'] = is_image
+    return data_reader_dict
 
 
 def get_logging_level(log_level):

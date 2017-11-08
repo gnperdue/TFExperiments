@@ -9,7 +9,7 @@ import gzip
 import shutil
 
 from DataReaders import MNISTDataReaderDset
-import mnv_utils
+import utils_mnist
 
 LOGGER = logging.getLogger(__name__)
 FLAGS = tf.app.flags.FLAGS
@@ -17,7 +17,7 @@ FLAGS = tf.app.flags.FLAGS
 
 tf.app.flags.DEFINE_string('data_dir', '/tmp/data',
                            """Directory where data is stored.""")
-tf.app.flags.DEFINE_string('file_root', 'mnv_data_',
+tf.app.flags.DEFINE_string('file_root', 'mnist_',
                            """File basename.""")
 tf.app.flags.DEFINE_string('compression', '',
                            """pigz (zz) or gzip (gz).""")
@@ -42,16 +42,16 @@ def compress(out_file):
 
 
 def read_all_evtids(datareader_dict, typ):
-    LOGGER.info('read all eventids for {}...'.format(typ))
+    LOGGER.info('read all labels for {}...'.format(typ))
     out_file = FLAGS.out_pattern + typ + '.txt'
     tf.reset_default_graph()
     n_evt = 0
 
     with tf.Graph().as_default() as g:
         with tf.Session(graph=g) as sess:
-            data_reader = MnvDataReaderVertexST(datareader_dict)
-            batch_dict = data_reader.batch_generator(num_epochs=1)
-            eventids = batch_dict['eventids']
+            data_reader = MNISTDataReaderDset(datareader_dict)
+            batch_features, batch_labels = \
+                data_reader.batch_generator(num_epochs=1)
 
             sess.run(tf.local_variables_initializer())
             coord = tf.train.Coordinator()
@@ -59,10 +59,10 @@ def read_all_evtids(datareader_dict, typ):
             try:
                 with open(out_file, 'ab+') as f:
                     for batch_num in range(1000000):
-                        evtids = sess.run(eventids)
-                        n_evt += len(evtids)
-                        for evtid in evtids:
-                            f.write('{}\n'.format(evtid))
+                        labels = sess.run(batch_labels)
+                        n_evt += len(labels)
+                        for label in labels:
+                            f.write('{}\n'.format(label))
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Reading stopped - queue is empty.')
             except Exception as e:
@@ -84,9 +84,8 @@ def main(argv=None):
     LOGGER.info("Starting...")
     LOGGER.info(__file__)
 
-    runpars_dict = mnv_utils.make_run_params_dict()
     train_list, valid_list, test_list = \
-        mnv_utils.get_trainvalidtest_file_lists(
+        utils_mnist.get_file_lists(
             FLAGS.data_dir, FLAGS.file_root, FLAGS.compression
         )
     flist_dict = {}
@@ -94,24 +93,13 @@ def main(argv=None):
     flist_dict['valid'] = valid_list
     flist_dict['test'] = test_list
 
-    def datareader_dict(filenames_list, name):
-        img_shp = (FLAGS.imgh, FLAGS.imgw_x, FLAGS.imgw_uv, FLAGS.img_depth)
-        dd = mnv_utils.make_data_reader_dict(
-            filenames_list=filenames_list,
-            batch_size=FLAGS.batch_size,
-            name=name,
-            compression=FLAGS.compression,
-            img_shp=img_shp,
-            data_format=FLAGS.data_format
-        )
-        dd['N_PLANECODES'] = FLAGS.n_planecodes
-        dd['FEATURE_STR_DICT'] = mnv_utils.make_hitimes_feature_str_dict()
-        return dd
-
-    LOGGER.info(' run_params_dict = {}'.format(repr(runpars_dict)))
-
     for typ in ['train', 'valid', 'test']:
-        dd = datareader_dict(flist_dict[typ], typ)
+        dd = utils_mnist.make_data_reader_dict(
+            filenames_list=flist_dict[typ],
+            batch_size=FLAGS.batch_size,
+            compression=FLAGS.compression,
+            is_image=FLAGS.is_image
+        )
         LOGGER.info(' data reader dict for {} = {}'.format(
             typ, repr(dd)
         ))
