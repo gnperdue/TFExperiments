@@ -77,6 +77,7 @@ def get_logging_level(log_level):
 
 def get_file_lists(data_dir, file_root, comp_ext):
     import glob
+    comp_ext = comp_ext if comp_ext == '' else '.' + comp_ext
     train_list = glob.glob(data_dir + '/' + file_root +
                            '*_train.tfrecord' + comp_ext)
     valid_list = glob.glob(data_dir + '/' + file_root +
@@ -91,8 +92,9 @@ def get_file_lists(data_dir, file_root, comp_ext):
     if len(train_list) == 0 and \
        len(valid_list) == 0 and \
        len(test_list) == 0:
-        LOGGER.error('No files found at specified path!')
-        return None, None, None
+        msg = 'No files found at specified path!'
+        LOGGER.error(msg)
+        raise IOError(msg)
     return train_list, valid_list, test_list
 
 

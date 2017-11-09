@@ -8,7 +8,8 @@ import os
 import gzip
 import shutil
 
-from DataReaders import MNISTDataReaderDset as DataReader
+# from DataReaders import MNISTDataReaderDset as DataReader
+from DataReaders import MNISTDataReader as DataReader
 import utils_mnist
 
 LOGGER = logging.getLogger(__name__)
@@ -60,11 +61,15 @@ def read_all_evtids(datareader_dict, typ):
             threads = tf.train.start_queue_runners(coord=coord)
             try:
                 with open(out_file, 'ab+') as f:
-                    for _ in range(10):
-                        labels = sess.run(batch_labels)
+                    for _ in range(3):
+                        labels, feats = sess.run([
+                            batch_labels, batch_features
+                        ])
                         n_evt += len(labels)
-                        for label in labels:
-                            f.write('{}\n'.format(label))
+                        mnist_data = zip(labels, feats)
+                        for datum in mnist_data:
+                            f.write('{}\n'.format(datum[0]))
+                            f.write('{}\n'.format(datum[1]))
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Reading stopped - queue is empty.')
             except Exception as e:
