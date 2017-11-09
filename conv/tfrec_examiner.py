@@ -8,7 +8,7 @@ import os
 import gzip
 import shutil
 
-from DataReaders import MNISTDataReaderDset
+from DataReaders import MNISTDataReaderDset as DataReader
 import utils_mnist
 
 LOGGER = logging.getLogger(__name__)
@@ -29,6 +29,8 @@ tf.app.flags.DEFINE_string('out_pattern', 'temp_out',
                            """Logfile name.""")
 tf.app.flags.DEFINE_integer('batch_size', 128,
                             """Batch size.""")
+tf.app.flags.DEFINE_bool('is_image', False,
+                         """Image formatting required.""")
 
 
 def compress(out_file):
@@ -49,7 +51,7 @@ def read_all_evtids(datareader_dict, typ):
 
     with tf.Graph().as_default() as g:
         with tf.Session(graph=g) as sess:
-            data_reader = MNISTDataReaderDset(datareader_dict)
+            data_reader = DataReader(datareader_dict)
             batch_features, batch_labels = \
                 data_reader.batch_generator(num_epochs=1)
 
@@ -58,7 +60,7 @@ def read_all_evtids(datareader_dict, typ):
             threads = tf.train.start_queue_runners(coord=coord)
             try:
                 with open(out_file, 'ab+') as f:
-                    for batch_num in range(1000000):
+                    for _ in range(10):
                         labels = sess.run(batch_labels)
                         n_evt += len(labels)
                         for label in labels:

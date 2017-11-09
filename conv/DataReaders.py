@@ -164,7 +164,7 @@ class MNISTDataReaderDset:
             return parse_mnist_tfrec(
                 tfrecord, self.name, self.features_shape
             )
-        dataset = tf.data.TFRecordDataset(self.filenames)
+        dataset = tf.data.TFRecordDataset(self.filenames_list)
         dataset = dataset.map(parse_fn)
         dataset = dataset.repeat(num_epochs)
         iterator = dataset.make_one_shot_iterator()
