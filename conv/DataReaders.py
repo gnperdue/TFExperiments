@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import tensorflow as tf
+import utils_mnist
 
 
 def parse_mnist_tfrec(tfrecord, name, features_shape):
@@ -64,27 +65,6 @@ class MNISTDataReader:
             features, targets = parse_mnist_tfrec(
                 tfrecord, self.name, self.features_shape
             )
-            # tfrecord_features = tf.parse_single_example(
-            #     tfrecord,
-            #     features={
-            #         'features': tf.FixedLenFeature([], tf.string),
-            #         'targets': tf.FixedLenFeature([], tf.string)
-            #     },
-            #     name=self.name+'_data'
-            # )
-            # with tf.variable_scope('features'):
-            #     features = tf.decode_raw(
-            #         tfrecord_features['features'], tf.uint8
-            #     )
-            #     features = tf.reshape(features, self.features_shape)
-            #     features = tf.cast(features, tf.float32)
-            # with tf.variable_scope('targets'):
-            #     targets = tf.decode_raw(tfrecord_features['targets'], tf.uint8)
-            #     targets = tf.reshape(targets, [-1])
-            #     targets = tf.one_hot(
-            #         indices=targets, depth=10, on_value=1, off_value=0
-            #     )
-            #     targets = tf.cast(targets, tf.float32)
         return features, targets
 
     def batch_generator(self, num_epochs=1):
@@ -125,7 +105,15 @@ class MNISTDataReaderDset:
         self.batch_size = data_reader_dict['BATCH_SIZE']
         self.name = data_reader_dict['NAME']
         self.data_format = data_reader_dict['DATA_FORMAT']
-        self.compression = data_reader_dict['FILE_COMPRESSION']
+        compression = data_reader_dict['FILE_COMPRESSION']
+        if compression == utils_mnist.NONE_COMP:
+            self.compression_type = ''
+        elif compression == utils_mnist.GZIP_COMP:
+            self.compression_type = 'GZIP'
+        elif compression == utils_mnist.ZLIB_COMP:
+            self.compression_type = 'ZLIB'
+        else:
+            raise ValueError('Unsupported compression: {}'.format(compression))
         self.is_image = data_reader_dict['IS_IMG']
         if self.is_image:
             self.features_shape = [-1, 28, 28, 1]
@@ -146,11 +134,11 @@ class MNISTDataReaderDset:
                 tfrecord, self.name, self.features_shape
             )
         dataset = tf.data.TFRecordDataset(
-            self.filenames_list, compression_type=self.compression
+            self.filenames_list, compression_type=self.compression_type
         )
         dataset = dataset.map(parse_fn)
         dataset = dataset.repeat(num_epochs)
+        dataset = dataset.batch(self.batch_size)
         iterator = dataset.make_one_shot_iterator()
         batch_features, batch_labels = iterator.get_next()
-        # TODO - wrap in dict?
         return batch_features, batch_labels

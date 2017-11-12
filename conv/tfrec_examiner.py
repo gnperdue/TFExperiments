@@ -8,8 +8,8 @@ import os
 import gzip
 import shutil
 
-# from DataReaders import MNISTDataReaderDset as DataReader
-from DataReaders import MNISTDataReader as DataReader
+from DataReaders import MNISTDataReaderDset as DataReader
+# from DataReaders import MNISTDataReader as DataReader
 import utils_mnist
 
 LOGGER = logging.getLogger(__name__)
