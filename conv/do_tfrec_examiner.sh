@@ -10,6 +10,7 @@ LOGFILE=$LOGDIR/log_tfrecex_mnist${DAT}.txt
 BATCHSIZE=10
 
 ISIMAGE="False"
+ISIMAGE="True"
 
 cat << EOF
 python tfrec_examiner.py --data_dir $DATADIR \

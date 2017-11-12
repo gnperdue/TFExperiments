@@ -117,8 +117,10 @@ class MNISTDataReaderDset:
         self.is_image = data_reader_dict['IS_IMG']
         if self.is_image:
             self.features_shape = [-1, 28, 28, 1]
+            # self.features_shape = [28, 28, 1]
         else:
             self.features_shape = [-1, 784]
+            # self.features_shape = [784]
 
     def shuffle_batch_generator(self, num_epochs=1):
         pass
