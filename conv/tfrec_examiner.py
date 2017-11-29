@@ -8,7 +8,7 @@ import os
 import gzip
 import shutil
 
-from DataReaders import MNISTDataReaderDset as DataReader
+from DataReaders import MNISTDataReaderTFRecDset as DataReader
 # from DataReaders import MNISTDataReader as DataReader
 import utils_mnist
 
@@ -68,6 +68,12 @@ def read_all_evtids(datareader_dict, typ):
                         n_evt += len(labels)
                         mnist_data = zip(labels, feats)
                         for datum in mnist_data:
+                            LOGGER.info('labels.shape = {}'.format(
+                                datum[0].shape
+                            ))
+                            LOGGER.info('features.shape = {}'.format(
+                                datum[1].shape
+                            ))
                             f.write('{}\n'.format(datum[0]))
                             f.write('{}\n'.format(datum[1]))
             except tf.errors.OutOfRangeError:
