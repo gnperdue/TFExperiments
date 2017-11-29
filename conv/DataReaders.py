@@ -20,7 +20,8 @@ def parse_mnist_tfrec(tfrecord, name, features_shape):
         features = tf.cast(features, tf.float32)
     with tf.variable_scope('targets'):
         targets = tf.decode_raw(tfrecord_features['targets'], tf.uint8)
-        targets = tf.reshape(targets, [-1])
+        # targets = tf.reshape(targets, [-1])
+        targets = tf.reshape(targets, [])
         targets = tf.one_hot(
             indices=targets, depth=10, on_value=1, off_value=0
         )
@@ -28,7 +29,24 @@ def parse_mnist_tfrec(tfrecord, name, features_shape):
     return features, targets
 
 
-class MNISTDataReader:
+class DataReaderBase:
+    def __init__(self, data_reader_dict):
+        self.filenames_list = data_reader_dict['FILENAMES_LIST']
+        self.batch_size = data_reader_dict['BATCH_SIZE']
+        self.name = data_reader_dict['NAME']
+        self.data_format = data_reader_dict['DATA_FORMAT']
+        compression = data_reader_dict['FILE_COMPRESSION']
+        if compression == utils_mnist.NONE_COMP:
+            self.compression_type = ''
+        elif compression == utils_mnist.GZIP_COMP:
+            self.compression_type = 'GZIP'
+        elif compression == utils_mnist.ZLIB_COMP:
+            self.compression_type = 'ZLIB'
+        else:
+            raise ValueError('Unsupported compression: {}'.format(compression))
+
+
+class MNISTDataReader(DataReaderBase):
     """
     name values are usually, e.g., 'train' or 'validation', etc.
 
@@ -37,11 +55,7 @@ class MNISTDataReader:
     * `tf.python_io.TFRecordCompressionType.GZIP`
     """
     def __init__(self, data_reader_dict):
-        self.filenames_list = data_reader_dict['FILENAMES_LIST']
-        self.batch_size = data_reader_dict['BATCH_SIZE']
-        self.name = data_reader_dict['NAME']
-        self.data_format = data_reader_dict['DATA_FORMAT']
-        self.compression = data_reader_dict['FILE_COMPRESSION']
+        DataReaderBase.__init__(self, data_reader_dict)
         self.is_image = data_reader_dict['IS_IMG']
         if self.is_image:
             self.features_shape = [-1, 28, 28, 1]
@@ -98,26 +112,14 @@ class MNISTDataReader:
         return features_batch, targets_batch
 
 
-class MNISTDataReaderDset:
+class MNISTDataReaderTFRecDset(DataReaderBase):
     """ etc. """
     def __init__(self, data_reader_dict):
-        self.filenames_list = data_reader_dict['FILENAMES_LIST']
-        self.batch_size = data_reader_dict['BATCH_SIZE']
-        self.name = data_reader_dict['NAME']
-        self.data_format = data_reader_dict['DATA_FORMAT']
-        compression = data_reader_dict['FILE_COMPRESSION']
-        if compression == utils_mnist.NONE_COMP:
-            self.compression_type = ''
-        elif compression == utils_mnist.GZIP_COMP:
-            self.compression_type = 'GZIP'
-        elif compression == utils_mnist.ZLIB_COMP:
-            self.compression_type = 'ZLIB'
-        else:
-            raise ValueError('Unsupported compression: {}'.format(compression))
+        DataReaderBase.__init__(self, data_reader_dict)
         self.is_image = data_reader_dict['IS_IMG']
         if self.is_image:
-            self.features_shape = [-1, 28, 28, 1]
-            # self.features_shape = [28, 28, 1]
+            # self.features_shape = [-1, 28, 28, 1]
+            self.features_shape = [28, 28, 1]
         else:
             self.features_shape = [-1, 784]
             # self.features_shape = [784]
