@@ -144,60 +144,11 @@ class MNISTDataReaderTFRecDset(DataReaderBase):
         dataset = tf.data.TFRecordDataset(
             self.filenames_list, compression_type=self.compression_type
         )
-        # dataset = tf.data.TFRecordDataset(
-        #     self.filenames_list[0], compression_type=self.compression_type
-        # )
         if shuffle:
             dataset = dataset.shuffle(buffer_size=256)
         dataset = dataset.repeat(num_epochs)
         dataset = dataset.map(parse_fn).prefetch(self.batch_size)
         dataset = dataset.batch(self.batch_size)
-        # try flat map style...
-        # dataset = tf.data.Dataset.from_tensor_slices(self.filenames_list)
-        # dataset = dataset.flat_map(
-        #     lambda filename: (
-        #         tf.data.TFRecordDataset(
-        #             filename, compression_type=self.compression_type
-        #         ).map(parse_fn).batch(self.batch_size)
-        #     )
-        # )
-        # dataset = dataset.repeat(num_epochs)
         iterator = dataset.make_one_shot_iterator()
         batch_features, batch_labels = iterator.get_next()
         return batch_features, batch_labels
-
-
-class MNISTDataReaderNPArrDset(DataReaderBase):
-    """ etc. """
-    def __init__(self, data_reader_dict):
-        DataReaderBase.__init__(self, data_reader_dict)
-        self.is_image = data_reader_dict['IS_IMG']
-        if self.is_image:
-            # self.features_shape = [-1, 28, 28, 1]
-            self.features_shape = [28, 28, 1]
-        else:
-            self.features_shape = [784]
-            # self.features_shape = [-1, 784]
-        self._f = None
-        self._data_dict = {}
-
-    def _read_hdf5(self):
-        """ start by looking at only the first file in the list """
-        self._f = h5py.File(self.filenames_list[0], 'r')
-        # hdf5 img data has shape (N, C, H, W)
-        features = self._f['fearures'][:]
-        if self.data_format == 'NHWC':
-            features = np.squeeze(features)
-            features = np.expand_dims(features, axis=3)
-        self._data_dict['fearures'] = features
-        self._data_dict['labels'] = self._f['labels'][:]
-        self._f.close()
-
-    def shuffle_batch_generator(self, num_epochs=1):
-        pass
-
-    def batch_generator(self, num_epochs=1):
-        """
-        blah
-        """
-        pass
