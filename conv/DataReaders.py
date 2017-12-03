@@ -9,7 +9,7 @@ except ImportError as e:
     raise e
 
 
-def parse_mnist_tfrec(tfrecord, name, features_shape):
+def parse_mnist_tfrec(tfrecord, name, features_shape, scalar_targs=False):
     tfrecord_features = tf.parse_single_example(
         tfrecord,
         features={
@@ -26,7 +26,8 @@ def parse_mnist_tfrec(tfrecord, name, features_shape):
         features = tf.cast(features, tf.float32)
     with tf.variable_scope('targets'):
         targets = tf.decode_raw(tfrecord_features['targets'], tf.uint8)
-        targets = tf.reshape(targets, [])
+        if scalar_targs:
+            targets = tf.reshape(targets, [])
         targets = tf.one_hot(
             indices=targets, depth=10, on_value=1, off_value=0
         )
@@ -40,15 +41,7 @@ class DataReaderBase:
         self.batch_size = data_reader_dict['BATCH_SIZE']
         self.name = data_reader_dict['NAME']
         self.data_format = data_reader_dict['DATA_FORMAT']
-        compression = data_reader_dict['FILE_COMPRESSION']
-        if compression == utils_mnist.NONE_COMP:
-            self.compression_type = ''
-        elif compression == utils_mnist.GZIP_COMP:
-            self.compression_type = 'GZIP'
-        elif compression == utils_mnist.ZLIB_COMP:
-            self.compression_type = 'ZLIB'
-        else:
-            raise ValueError('Unsupported compression: {}'.format(compression))
+        self.is_image = data_reader_dict['IS_IMG']
 
 
 class MNISTDataReader(DataReaderBase):
@@ -61,7 +54,7 @@ class MNISTDataReader(DataReaderBase):
     """
     def __init__(self, data_reader_dict):
         DataReaderBase.__init__(self, data_reader_dict)
-        self.is_image = data_reader_dict['IS_IMG']
+        self.compression = data_reader_dict['FILE_COMPRESSION']
         if self.is_image:
             self.features_shape = [-1, 28, 28, 1]
         else:
@@ -121,7 +114,15 @@ class MNISTDataReaderTFRecDset(DataReaderBase):
     """ etc. """
     def __init__(self, data_reader_dict):
         DataReaderBase.__init__(self, data_reader_dict)
-        self.is_image = data_reader_dict['IS_IMG']
+        compression = data_reader_dict['FILE_COMPRESSION']
+        if compression == utils_mnist.NONE_COMP:
+            self.compression_type = ''
+        elif compression == utils_mnist.GZIP_COMP:
+            self.compression_type = 'GZIP'
+        elif compression == utils_mnist.ZLIB_COMP:
+            self.compression_type = 'ZLIB'
+        else:
+            raise ValueError('Unsupported compression: {}'.format(compression))
         if self.is_image:
             self.features_shape = [28, 28, 1]
         else:
@@ -138,7 +139,7 @@ class MNISTDataReaderTFRecDset(DataReaderBase):
         """
         def parse_fn(tfrecord):
             return parse_mnist_tfrec(
-                tfrecord, self.name, self.features_shape
+                tfrecord, self.name, self.features_shape, True
             )
         dataset = tf.data.TFRecordDataset(
             self.filenames_list, compression_type=self.compression_type
@@ -175,8 +176,8 @@ class MNISTDataReaderNPArrDset(DataReaderBase):
             # self.features_shape = [-1, 28, 28, 1]
             self.features_shape = [28, 28, 1]
         else:
-            self.features_shape = [-1, 784]
-            # self.features_shape = [784]
+            self.features_shape = [784]
+            # self.features_shape = [-1, 784]
         self._f = None
         self._data_dict = {}
 

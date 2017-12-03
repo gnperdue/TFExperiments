@@ -15,14 +15,14 @@ CONV="--do_conv"
 NEPOCHS="--num_epochs 3"
 NEPOCHS="--num_epochs 1"
 
-SHORT="--do_a_short_run"
 SHORT=""
+SHORT="--do_a_short_run"
 
 BATCHNORM="--do_batch_norm"
 BATCHNORM=""
 
-LRATE="--learning_rate 0.01"
 LRATE="--learning_rate 0.05"
+LRATE="--learning_rate 0.01"
 
 MODEL_CODE="20171017_logreg"
 MODEL_CODE="20171017_batch"

@@ -19,11 +19,13 @@ def make_run_params_dict():
     return run_params_dict
 
 
-def make_train_params_dict():
+def make_train_params_dict(tf_flags=None):
     train_params_dict = {}
-    train_params_dict['LEARNING_RATE'] = 0.01
+    train_params_dict['LEARNING_RATE'] = tf_flags.learning_rate \
+        if tf_flags else 0.01
     train_params_dict['BATCH_SIZE'] = BATCH_SIZE
-    train_params_dict['NUM_EPOCHS'] = 1
+    train_params_dict['NUM_EPOCHS'] = tf_flags.num_epochs \
+        if tf_flags else 1
     train_params_dict['MOMENTUM'] = 0.9
     train_params_dict['STRATEGY'] = tf.train.AdamOptimizer
     train_params_dict['DROPOUT_KEEP_PROB'] = 0.75
@@ -95,7 +97,11 @@ def get_file_lists(data_dir, file_root, comp_ext):
         msg = 'No files found at specified path!'
         LOGGER.error(msg)
         raise IOError(msg)
-    return train_list, valid_list, test_list
+    flist_dict = {}
+    flist_dict['train'] = train_list
+    flist_dict['valid'] = valid_list
+    flist_dict['test'] = test_list
+    return flist_dict
 
 
 def get_number_of_trainable_parameters():

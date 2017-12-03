@@ -97,16 +97,10 @@ def main(argv=None):
     LOGGER.info("Starting...")
     LOGGER.info(__file__)
 
-    train_list, valid_list, test_list = \
-        utils_mnist.get_file_lists(
-            FLAGS.data_dir, FLAGS.file_root, FLAGS.compression
-        )
-    flist_dict = {}
-    flist_dict['train'] = train_list
-    flist_dict['valid'] = valid_list
-    flist_dict['test'] = test_list
-
-    for typ in ['train', 'valid', 'test']:
+    flist_dict = utils_mnist.get_file_lists(
+        FLAGS.data_dir, FLAGS.file_root, FLAGS.compression
+    )
+    for typ in flist_dict.keys():
         dd = utils_mnist.make_data_reader_dict(
             filenames_list=flist_dict[typ],
             batch_size=FLAGS.batch_size,

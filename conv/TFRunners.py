@@ -11,7 +11,8 @@ import tensorflow as tf
 import numpy as np
 from six.moves import range
 
-from DataReaders import MNISTDataReader
+from DataReaders import MNISTDataReaderTFRecDset as DataReader
+# from DataReaders import MNISTDataReader as DataReader
 import utils_mnist
 
 LOGGER = logging.getLogger(__name__)
@@ -32,10 +33,9 @@ class TFRunnerCategorical:
             train_params_dict = dict()
 
         try:
-            self.train_file_list = run_params_dict['TRAIN_FILE_LIST']
-            self.valid_file_list = run_params_dict['VALID_FILE_LIST']
-            self.test_file_list = run_params_dict['TEST_FILE_LIST']
-            self.file_compression = run_params_dict['COMPRESSION']
+            self.train_reader_args = run_params_dict['TRAIN_READER_ARGS']
+            self.valid_reader_args = run_params_dict['VALID_READER_ARGS']
+            self.test_reader_args = run_params_dict['TEST_READER_ARGS']
             self.save_model_directory = run_params_dict['MODEL_DIR']
             self.load_saved_model = run_params_dict['LOAD_SAVED_MODEL']
             self.save_freq = run_params_dict['SAVE_EVRY_N_BATCHES']
@@ -56,12 +56,6 @@ class TFRunnerCategorical:
 
         self.model = model
 
-    def _prep_targets_and_features(self, generator, num_epochs):
-        batch_dict = generator(num_epochs=num_epochs)
-        targets = batch_dict['targets']
-        features = batch_dict['features']
-        return targets, features
-
     def run_training(
             self, do_validation=False, short=False, is_image=False
     ):
@@ -80,7 +74,6 @@ class TFRunnerCategorical:
         ))
 
         with tf.Graph().as_default() as g:
-
             # n_batches: control this with num_epochs
             n_batches = 100 if short else int(1e9)
             save_every_n_batch = 10 if short else self.save_freq
@@ -91,31 +84,13 @@ class TFRunnerCategorical:
             with tf.Session(graph=g) as sess:
 
                 with tf.variable_scope('data_io'):
-                    train_reader = MNISTDataReader(
-                        filenames_list=self.train_file_list,
-                        batch_size=self.batch_size,
-                        name='train',
-                        compression=self.file_compression,
-                        is_image=is_image
-                    )
-                    targets_train, features_train = \
-                        self._prep_targets_and_features(
-                            train_reader.shuffle_batch_generator,
-                            self.num_epochs
-                        )
+                    train_reader = DataReader(self.train_reader_args)
+                    features_train, targets_train = \
+                        train_reader.shuffle_batch_generator(self.num_epochs)
 
-                    valid_reader = MNISTDataReader(
-                        filenames_list=self.valid_file_list,
-                        batch_size=self.batch_size,
-                        name='valid',
-                        compression=self.file_compression,
-                        is_image=is_image
-                    )
-                    targets_valid, features_valid = \
-                        self._prep_targets_and_features(
-                            valid_reader.batch_generator,
-                            1000000
-                        )
+                    valid_reader = DataReader(self.valid_reader_args)
+                    features_valid, targets_valid = \
+                        valid_reader.batch_generator(1000000)
 
                     with tf.variable_scope('pipeline_control'):
                         use_valid = tf.placeholder(
@@ -267,17 +242,8 @@ class TFRunnerCategorical:
 
             with tf.Session(graph=g) as sess:
                 with tf.variable_scope('data_io'):
-                    data_reader = MNISTDataReader(
-                        filenames_list=self.test_file_list,
-                        batch_size=self.batch_size,
-                        name='test',
-                        compression=self.file_compression,
-                        is_image=is_image
-                    )
-                    targets, features = \
-                        self._prep_targets_and_features(
-                            data_reader.batch_generator, 1
-                        )
+                    data_reader = DataReader(self.test_reader_args)
+                    features, targets = data_reader.batch_generator(1)
 
                 self.model.prepare_for_inference(features)
                 self.model.prepare_for_loss_computation(targets)

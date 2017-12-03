@@ -4,6 +4,7 @@ minerva test
 from __future__ import print_function
 
 import tensorflow as tf
+import logging
 
 import ModelsMNIST
 from TFRunners import TFRunnerCategorical
@@ -30,6 +31,8 @@ tf.app.flags.DEFINE_string('log_level', 'INFO',
                            """Logging level (INFO/DEBUG/etc.).""")
 tf.app.flags.DEFINE_integer('num_epochs', 1,
                             """Number of training epochs.""")
+tf.app.flags.DEFINE_integer('batch_size', 128,
+                            """Batch size.""")
 tf.app.flags.DEFINE_boolean('do_training', True,
                             """Perform training ops.""")
 tf.app.flags.DEFINE_boolean('do_validation', True,
@@ -47,8 +50,6 @@ tf.app.flags.DEFINE_float('learning_rate', 0.01,
 
 
 def main(argv=None):
-    # set up logger
-    import logging
     logfilename = FLAGS.log_name
     logging_level = utils_mnist.get_logging_level(FLAGS.log_level)
     logging.basicConfig(
@@ -59,35 +60,30 @@ def main(argv=None):
     logger.info("Starting...")
     logger.info(__file__)
 
-    # set up run parameters
-    run_params_dict = utils_mnist.make_default_run_params_dict()
-    # set up file lists
-    comp_ext = ''
-    if FLAGS.compression == 'zz':
-        comp_ext = '.zz'
-        run_params_dict['COMPRESSION'] = utils_mnist.ZLIB_COMP
-    elif FLAGS.compression == 'gz':
-        comp_ext = '.gz'
-        run_params_dict['COMPRESSION'] = utils_mnist.GZIP_COMP
-    train_list, valid_list, test_list = utils_mnist.get_file_lists(
-        FLAGS.data_dir, FLAGS.file_root, comp_ext
-    )
-    run_params_dict['TRAIN_FILE_LIST'] = train_list
-    run_params_dict['VALID_FILE_LIST'] = valid_list
-    run_params_dict['TEST_FILE_LIST'] = test_list
+    run_params_dict = utils_mnist.make_run_params_dict()
     run_params_dict['MODEL_DIR'] = FLAGS.model_dir
     run_params_dict['BE_VERBOSE'] = True
+    flist_dict = utils_mnist.get_file_lists(
+        FLAGS.data_dir, FLAGS.file_root, FLAGS.compression
+    )
+    for typ in flist_dict.keys():
+        dd = utils_mnist.make_data_reader_dict(
+            filenames_list=flist_dict[typ],
+            batch_size=FLAGS.batch_size,
+            compression=FLAGS.compression,
+            is_image=FLAGS.do_conv
+        )
+        logger.info(' data reader dict for {} = {}'.format(
+            typ, repr(dd)
+        ))
+        reader_args = typ.upper() + '_READER_ARGS'
+        run_params_dict[reader_args] = dd
 
-    # set up training parameters
-    train_params_dict = utils_mnist.make_default_train_params_dict()
-    train_params_dict['DROPOUT_KEEP_PROB'] = 1.0
-    train_params_dict['NUM_EPOCHS'] = FLAGS.num_epochs
-    train_params_dict['LEARNING_RATE'] = FLAGS.learning_rate
+    train_params_dict = utils_mnist.make_train_params_dict(FLAGS)
 
     if FLAGS.do_conv:
         model = ModelsMNIST.MNISTConvNet(use_batch_norm=FLAGS.do_batch_norm)
     else:
-        # model = ModelsMNIST.MNISTLogReg()
         model = ModelsMNIST.MNISTMLP(use_batch_norm=FLAGS.do_batch_norm)
 
     logger.info(' run_params_dict = {}'.format(repr(run_params_dict)))
