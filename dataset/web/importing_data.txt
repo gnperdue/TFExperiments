@@ -1,0 +1,243 @@
+# Importing Data
+
+-------------------------------------------------------------------------------
+
+Following: https://www.tensorflow.org/programmers_guide/datasets
+
+## Basic mechanics
+
+### Dataset structure
+
+```
+In [1]: import tensorflow as tf
+
+In [2]: dataset1 = tf.data.Dataset.from_tensor_slices(tf.random_uniform([4, 10]))
+
+In [3]: print dataset1.output_types
+<dtype: 'float32'>
+
+In [4]: print dataset1.output_shapes
+(10,)
+
+In [5]: dataset2 = tf.data.Dataset.from_tensor_slices(
+   ...: (tf.random_uniform([4]),
+   ...: tf.random_uniform([4, 100], maxval=100, dtype=tf.int32))
+   ...: )
+
+In [6]: print dataset2.output_types
+(tf.float32, tf.int32)
+
+In [7]: print dataset2.output_shapes
+(TensorShape([]), TensorShape([Dimension(100)]))
+
+In [8]: dataset3 = tf.data.Dataset.zip((dataset1, dataset2))
+
+In [9]: print dataset3.output_types
+(tf.float32, (tf.float32, tf.int32))
+
+In [10]: print dataset3.output_shapes
+(TensorShape([Dimension(10)]), (TensorShape([]), TensorShape([Dimension(100)])))
+```
+
+We may give components names:
+
+```
+In [11]: dataset = tf.data.Dataset.from_tensor_slices(
+    ...: {"a": tf.random_uniform([4]),
+    ...: "b": tf.random_uniform([4, 10], maxval=100, dtype=tf.int32)}
+    ...: )
+
+In [12]: print dataset.output_types
+{'a': tf.float32, 'b': tf.int32}
+
+In [13]: print dataset.output_shapes
+{'a': TensorShape([]), 'b': TensorShape([Dimension(10)])}
+```
+
+### Creating an iterator
+
+* one-shot
+* initializable
+* reinitializable
+* feedable
+
+```
+In [14]: dataset = tf.data.Dataset.range(10)
+
+In [15]: iterator = dataset.make_one_shot_iterator()
+
+In [16]: next_element = iterator.get_next()
+
+In [17]: with tf.Session() as sess:
+    ...:     for i in range(10):
+    ...:         value = sess.run(next_element)
+    ...:         print value
+    ...:
+2017-11-17 18:37:34.965084: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+```
+
+Also, note:
+
+```
+In [2]: dataset = tf.data.Dataset.range(5)
+
+In [3]: iterator = dataset.make_one_shot_iterator()
+
+In [4]: next_element = iterator.get_next()
+
+In [5]: with tf.Session() as sess:
+   ...:     try:
+   ...:         for _ in range(20):
+   ...:             value = sess.run(next_element)
+   ...:             print(value)
+   ...:     except tf.errors.OutOfRangeError as e:
+   ...:         print e
+   ...:
+2017-11-18 13:42:12.752546: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+0
+1
+2
+3
+4
+End of sequence
+	 [[Node: IteratorGetNext = IteratorGetNext[output_shapes=[[]], output_types=[DT_INT64], _device="/job:localhost/replica:0/task:0/device:CPU:0"](OneShotIterator)]]
+```
+
+We must _intialize_ `initializable` iterators.
+
+```
+In [2]: max_value = tf.placeholder(tf.int64, shape=[])
+
+In [3]: dataset = tf.data.Dataset.range(max_value)
+
+In [4]: iterator = dataset.make_initializable_iterator()
+
+In [5]: nex_element = iterator.get_next()
+
+In [8]: with tf.Session() as sess:
+   ...:     sess.run(iterator.initializer, feed_dict={max_value: 10})
+   ...:     for i in range(10):
+   ...:         value = sess.run(nex_element)
+   ...:         assert i == value
+   ...:
+
+In [9]: with tf.Session() as sess:
+   ...:     sess.run(iterator.initializer, feed_dict={max_value: 100})
+   ...:     for i in range(100):
+   ...:         value = sess.run(nex_element)
+   ...:         assert i == value
+   ...:
+```
+
+A `reinitializable` iterator can be initialized from multiple different dataset
+objects. For example, we might have a training input pipeline that introduces
+image perturbations to improve training, but a validation input pipeline that
+uses unmodified images. These pipelines will generally have different `Dataset`
+objects with the same structure.
+
+```
+In [10]: training_dataset = tf.data.Dataset.range(100).map(
+    ...: lambda x: x + tf.random_uniform([], -10, 10, tf.int64)
+    ...: )
+
+In [11]: validation_dataset = tf.data.Dataset.range(50)
+```
+
+A `reinitializble` iterator is defined by its structure.
+
+```
+In [12]: training_dataset.output_shapes == validation_dataset.output_shapes
+Out[12]: True
+
+In [13]: training_dataset.output_types == validation_dataset.output_types
+Out[13]: True
+
+In [14]: iterator = tf.data.Iterator.from_structure(
+    ...: training_dataset.output_types,
+    ...: training_dataset.output_shapes
+    ...: )
+
+In [15]: next_element = iterator.get_next()
+
+In [16]: training_init_op = iterator.make_initializer(training_dataset)
+
+In [17]: validation_init_op = iterator.make_initializer(validation_dataset)
+
+In [18]: with tf.Session() as sess:
+    ...:     for _ in range(20):
+    ...:         sess.run(training_init_op)
+    ...:         for _ in range(100):
+    ...:             sess.run(next_element)
+    ...:
+
+In [19]: with tf.Session() as sess:
+    ...:     for _ in range(20):
+    ...:         sess.run(validation_init_op)
+    ...:         for _ in range(50):
+    ...:             sess.run(next_element)
+    ...:
+```
+
+Put this in a test script.
+
+```
+(py2tf14) web$ python reinit_iterator.py
+True
+True
+2017-11-18 13:12:45.133223: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+[-1, 3, 0, 8, 11, 4, -3, 4, 3, 5]
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+A `feedable` iterator can be used with `tf.placeholder` to select which
+`Iterator` to use in each call to `tf.Session.run` using the `feed_dict`
+mechanism. It offers the same functionality as a `reinitializable` iterator but
+without requiring us to initialize an iterator from the start of a dataset
+when we switch between iterators.
+
+```
+(py2tf14) web$ python better_feedable_iterator.py
+2017-11-18 13:56:44.882933: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+end of sequence
+end of sequence
+end of sequence
+[1, 1, 1, 2, 5, 6, 6, 5, 6, 10, 1, -1, 0, 2, 5, 4, 7, 5, 7, 10, -1, -1, 0, 3, 5, 6, 4, 8, 9, 7]
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+### Consuming values from an interator
+
+`Iterator.get_next()` returns one or more `tf.Tensor` objects corresponding to
+the symbolic next element of an iterator. Note that calling `get_next()` does
+not immediately advance the iterator - we must use the returned `tf.Tensor`
+objects in a TensorFlow expression, and pass the result to a `tf.Session.run()`
+call. If we reach the end of the dataset, `get_next()` will return a
+`tf.errors.OutOfRangeError` - the iterator is now in an unusable state and must
+be re-initialized.
+
+```
+(py2tf14) web$ python oorangeerr.py
+2017-11-18 14:07:24.029489: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+0 0
+1 2
+2 4
+3 6
+4 8
+end of dataset
+```
+
+If each element of the dataset has nested structure, the return value of
+`Iterator.get_next()` will be one or more `tf.Tensor` objects in the same
+nested structure.
+
+## Reading input data
