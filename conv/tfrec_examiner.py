@@ -8,9 +8,9 @@ import os
 import gzip
 import shutil
 
-from DataReaders import MNISTDataReaderTFRecDset as DataReader
+from tfconv.data_readers import MNISTDataReaderTFRecDset as DataReader
 # from DataReaders import MNISTDataReader as DataReader
-import utils_mnist
+import tfconv.utils_mnist as utils
 
 LOGGER = logging.getLogger(__name__)
 FLAGS = tf.app.flags.FLAGS
@@ -97,11 +97,11 @@ def main(argv=None):
     LOGGER.info("Starting...")
     LOGGER.info(__file__)
 
-    flist_dict = utils_mnist.get_file_lists(
+    flist_dict = utils.get_file_lists(
         FLAGS.data_dir, FLAGS.file_root, FLAGS.compression
     )
     for typ in flist_dict.keys():
-        dd = utils_mnist.make_data_reader_dict(
+        dd = utils.make_data_reader_dict(
             filenames_list=flist_dict[typ],
             batch_size=FLAGS.batch_size,
             compression=FLAGS.compression,

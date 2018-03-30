@@ -6,9 +6,9 @@ from __future__ import print_function
 import tensorflow as tf
 import logging
 
-import ModelsMNIST
-from TFRunners import TFRunnerCategorical
-import utils_mnist
+import tfconv.models_mnist as models
+from tfconv.runners import TFRunnerCategorical
+import tfconv.utils_mnist as utils
 
 tf_version = tf.__version__
 print('TF verion: {}'.format(tf_version))
@@ -51,7 +51,7 @@ tf.app.flags.DEFINE_float('learning_rate', 0.01,
 
 def main(argv=None):
     logfilename = FLAGS.log_name
-    logging_level = utils_mnist.get_logging_level(FLAGS.log_level)
+    logging_level = utils.get_logging_level(FLAGS.log_level)
     logging.basicConfig(
         filename=logfilename, level=logging_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -60,14 +60,14 @@ def main(argv=None):
     logger.info("Starting...")
     logger.info(__file__)
 
-    run_params_dict = utils_mnist.make_run_params_dict()
+    run_params_dict = utils.make_run_params_dict()
     run_params_dict['MODEL_DIR'] = FLAGS.model_dir
     run_params_dict['BE_VERBOSE'] = True
-    flist_dict = utils_mnist.get_file_lists(
+    flist_dict = utils.get_file_lists(
         FLAGS.data_dir, FLAGS.file_root, FLAGS.compression
     )
     for typ in flist_dict.keys():
-        dd = utils_mnist.make_data_reader_dict(
+        dd = utils.make_data_reader_dict(
             filenames_list=flist_dict[typ],
             batch_size=FLAGS.batch_size,
             compression=FLAGS.compression,
@@ -79,12 +79,12 @@ def main(argv=None):
         reader_args = typ.upper() + '_READER_ARGS'
         run_params_dict[reader_args] = dd
 
-    train_params_dict = utils_mnist.make_train_params_dict(FLAGS)
+    train_params_dict = utils.make_train_params_dict(FLAGS)
 
     if FLAGS.do_conv:
-        model = ModelsMNIST.MNISTConvNet(use_batch_norm=FLAGS.do_batch_norm)
+        model = models.MNISTConvNet(use_batch_norm=FLAGS.do_batch_norm)
     else:
-        model = ModelsMNIST.MNISTMLP(use_batch_norm=FLAGS.do_batch_norm)
+        model = models.MNISTMLP(use_batch_norm=FLAGS.do_batch_norm)
 
     logger.info(' run_params_dict = {}'.format(repr(run_params_dict)))
     logger.info(' train_params_dict = {}'.format(repr(train_params_dict)))
