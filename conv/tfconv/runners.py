@@ -11,7 +11,7 @@ import tensorflow as tf
 import numpy as np
 from six.moves import range
 
-from DataReaders import MNISTDataReaderTFRecDset as DataReader
+from data_readers import MNISTDataReaderTFRecDset as DataReader
 # from DataReaders import MNISTDataReader as DataReader
 import utils_mnist
 
