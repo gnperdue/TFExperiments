@@ -154,7 +154,7 @@ def read_all_evtids(datareader_dict, typ):
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
             try:
-                with open(out_file, 'ab+') as f:
+                with open(out_file, 'w') as f:
                     # look at 2 batches only
                     for _ in range(2):
                         labels, feats = sess.run([
@@ -171,8 +171,8 @@ def read_all_evtids(datareader_dict, typ):
                                 str(np.random.randint(1000000000)) + \
                                 '_' + str(label) + '.png'
                             plt.savefig(fname, bbox_inches='tight')
-                            f.write('{}\n'.format(datum[0]))
-                            f.write('{}\n'.format(datum[1]))
+                            print('{}'.format(datum[0]), file=f)
+                            print('{}'.format(datum[1]), file=f)
             except tf.errors.OutOfRangeError:
                 print('Reading stopped - queue is empty.')
             except Exception as e:
