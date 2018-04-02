@@ -1,6 +1,7 @@
 """
 MNIST models
 """
+from __future__ import absolute_import
 import tensorflow as tf
 from tensorflow.contrib.layers import xavier_initializer as xavier_init
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
 import tensorflow as tf
-import utils_mnist
 import numpy as np
 try:
     import h5py
 except ImportError as e:
     print('h5py is not available')
     raise e
+from . import utils_mnist
 
 
 def parse_mnist_tfrec(tfrecord, name, features_shape, scalar_targs=False):

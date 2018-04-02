@@ -2,6 +2,7 @@
 """
 Run TF
 """
+from __future__ import absolute_import
 from __future__ import print_function
 import os
 import time
@@ -11,9 +12,8 @@ import tensorflow as tf
 import numpy as np
 from six.moves import range
 
-from data_readers import MNISTDataReaderTFRecDset as DataReader
-# from DataReaders import MNISTDataReader as DataReader
-import utils_mnist
+from .data_readers import MNISTDataReaderTFRecDset as DataReader
+from . import utils_mnist
 
 LOGGER = logging.getLogger(__name__)
 
