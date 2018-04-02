@@ -24,9 +24,9 @@ BATCHNORM=""
 LRATE="--learning_rate 0.05"
 LRATE="--learning_rate 0.01"
 
-MODEL_CODE="20171017_logreg"
-MODEL_CODE="20171017_batch"
-MODEL_CODE="20171017_nobatch"
+MODEL_CODE="20180402_logreg"
+MODEL_CODE="20180402_batch"
+MODEL_CODE="20180402_nobatch"
 
 # data, log, and model logistics
 BASEP="${HOME}/Documents/MINERvA/AI/mnist_tf"
