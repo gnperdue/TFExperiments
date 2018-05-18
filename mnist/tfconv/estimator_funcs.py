@@ -44,15 +44,20 @@ def mnist_conv(features, labels, mode, params):
         }
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
 
-    # still need to add regularization_losses
+    # loss is automagically logged to tensorboard
+    regularization_loss = tf.losses.get_regularization_loss()
     loss = tf.losses.softmax_cross_entropy(
         onehot_labels=labels, logits=logits
-    )
+    ) + regularization_loss
+    # tf.summary.scalar('loss', loss)
     accuracy = tf.metrics.accuracy(
         labels=tf.argmax(labels, 1), predictions=predicted_classes,
         name='accuracy_op'
     )
-    metrics = {'accuracy': accuracy}
+    metrics = {
+        'accuracy': accuracy,
+    }
+    tf.summary.scalar('regularization_loss', regularization_loss)
     tf.summary.scalar('accuracy', accuracy[1])
 
     if mode == tf.estimator.ModeKeys.EVAL:

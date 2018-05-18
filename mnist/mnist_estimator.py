@@ -22,7 +22,7 @@ def main(hdf5_path, batch_size, num_epochs, train_steps):
     # checkpoint config - can't have both steps and secs, sadly
     # if model_dir is set, it must agree with estimator if set there also
     run_config = tf.estimator.RunConfig(
-        save_checkpoints_steps=50,
+        save_checkpoints_steps=10,
         keep_checkpoint_max=3,
         model_dir='models/mnist'
     )
@@ -48,6 +48,7 @@ def main(hdf5_path, batch_size, num_epochs, train_steps):
         input_fn=lambda: make_mnist_iterators(
             data['valid'], batch_size, num_epochs
         ),
+        steps=100,
     )
     print('\nEval set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
