@@ -5,7 +5,7 @@ from __future__ import division
 import logging
 import tensorflow as tf
 from tfconv.layer_creator import LayerCreator
-from tfconv.models import two_layer_conv
+from tfconv.model_fns import two_layer_conv
 
 LOGGER = logging.getLogger(__name__)
 
