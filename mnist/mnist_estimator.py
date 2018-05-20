@@ -24,7 +24,7 @@ def main(hdf5_path, batch_size, num_epochs, train_steps):
     run_config = tf.estimator.RunConfig(
         save_checkpoints_steps=10,
         keep_checkpoint_max=3,
-        model_dir='models/mnist'
+        model_dir='chkpts/mnist_estimator'
     )
 
     classifier = tf.estimator.Estimator(
