@@ -46,3 +46,12 @@ class MNISTHDF5Reader:
         oh_targs = np.zeros((1, self._nlabels))
         oh_targs[0, targs] = 1
         return feats, oh_targs.reshape(self._nlabels,)
+
+    def get_flat_example(self, idx):
+        feats = self._f['features'][idx]
+        feats = np.reshape(feats, (28 * 28))
+        # feats = np.moveaxis(feats, 0, -1)
+        targs = self._f['targets'][idx].reshape([-1])
+        oh_targs = np.zeros((1, self._nlabels))
+        oh_targs[0, targs] = 1
+        return feats, oh_targs.reshape(self._nlabels,)
