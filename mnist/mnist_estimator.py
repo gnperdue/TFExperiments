@@ -10,12 +10,12 @@ from tfconv.estimator_funcs import mnist_conv
 tf.logging.set_verbosity(tf.logging.DEBUG)
 
 
-def main(hdf5_path, batch_size, num_epochs, train_steps):
+def main(hdf5_dir, batch_size, num_epochs, train_steps):
     import os
     data = {}
     for dset in ['test', 'train', 'valid']:
         data[dset] = os.path.join(
-            hdf5_path, 'mnist_{}.hdf5'.format(dset)
+            hdf5_dir, 'mnist_{}.hdf5'.format(dset)
         )
         print('data[{}] = {}'.format(dset, data[dset]))
 
@@ -57,8 +57,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--hdf5-path', type=str, required=True,
-        help='Path to the MNIST HDF5 data.'
+        '--hdf5-dir', type=str, required=True,
+        help='MNIST HDF5 data directory.'
     )
     parser.add_argument(
         '--batch-size', type=int, default=64,
