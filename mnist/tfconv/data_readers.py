@@ -21,11 +21,10 @@ def _make_mnist_generator_fn(hdf5_file_name, use_oned_data=False):
         idx = 0
         while True:
             if idx >= nevents:
+                reader.closef()
                 return
             yield readfn(idx)
             idx += 1
-            
-        reader.closef()
 
     return example_generator_fn
 
@@ -60,7 +59,7 @@ def make_mnist_iterators(
     # return ds
 
 
-def test_one_shot_iterator_read(hdf5_file, batch_size=25, num_epochs=1):
+def test_graph_one_shot_iterator_read(hdf5_file, batch_size=25, num_epochs=1):
     feats, labs = make_mnist_iterators(hdf5_file, batch_size, num_epochs)
     with tf.Session() as sess:
         counter = 0
@@ -77,9 +76,21 @@ def test_one_shot_iterator_read(hdf5_file, batch_size=25, num_epochs=1):
             print(e)
 
 
+def test_eager_one_shot_iterator_read(hdf5_file, batch_size=25, num_epochs=1):
+    tfe = tf.contrib.eager
+    tf.enable_eager_execution()
+    targets_and_labels = make_mnist_dset(
+        hdf5_file, batch_size, num_epochs, use_oned_data=True
+    )
+
+    for i, (fs, ls) in enumerate(tfe.Iterator(targets_and_labels)):
+        print(fs.shape, fs.dtype, ls.shape, ls.dtype)
+        
+
 if __name__ == '__main__':
     import os
     # Get path to data
     DDIR = os.environ['HOME'] + '/Dropbox/Data/RandomData/hdf5'
     TFILE = DDIR + '/mnist_test.hdf5'
-    test_one_shot_iterator_read(TFILE)
+    test_graph_one_shot_iterator_read(TFILE)
+    test_eager_one_shot_iterator_read(TFILE)
