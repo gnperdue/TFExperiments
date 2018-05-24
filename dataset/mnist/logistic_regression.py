@@ -63,9 +63,10 @@ def validate_one_epoch(validation_file, model_dir):
     pass
 
 
-def train(n_batches, train_file, model_dir):
+def train(n_batches, train_file, model_dir, learning_rate=0.01):
     tf.reset_default_graph()
     ckpt_dir = model_dir + '/checkpoints'
+    run_dest_dir = model_dir + '/%d' % time.time()
 
     with tf.Graph().as_default() as g:
         with tf.Session(graph=g) as sess:
@@ -76,8 +77,8 @@ def train(n_batches, train_file, model_dir):
                     train_file, batch_size=128, num_epochs=1,
                     use_oned_data=True
                 )
-            model.build_network(features, targets)
-            writer = tf.summary.FileWriter(model_dir)
+            loss_op = model.loss(features, targets)
+            writer = tf.summary.FileWriter(run_dest_dir)
             saver = tf.train.Saver(save_relative_paths=True)
 
             sess.run(tf.global_variables_initializer())
@@ -89,17 +90,26 @@ def train(n_batches, train_file, model_dir):
                 LOGGER.info('Restored session from {}'.format(ckpt_dir))
 
             writer.add_graph(sess.graph)
-            initial_step = model.global_step.eval()
+            gstep_tensr = tf.train.get_or_create_global_step()
+            initial_step = gstep_tensr.eval()
             LOGGER.info('initial step = {}'.format(initial_step))
 
+            with tf.variable_scope('training'):
+                optimizer = tf.train.GradientDescentOptimizer(
+                    learning_rate=learning_rate
+                )
+                train_op = optimizer.minimize(
+                    loss_op, global_step=gstep_tensr
+                )
+
             summary_op = create_or_add_summaries_op(
-                'summaries', 'loss', model.loss
+                'summaries', 'loss', loss_op
             )
 
             try:
                 for b_num in range(initial_step, initial_step + n_batches):
                     _, loss_batch, summary_t = sess.run(
-                        [model.optimizer, model.loss, summary_op]
+                        [train_op, loss_op, summary_op]
                     )
                     LOGGER.info(
                         ' Loss @step {}: {:5.1f}'.format(b_num, loss_batch)
