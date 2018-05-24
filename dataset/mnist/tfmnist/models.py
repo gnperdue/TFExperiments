@@ -9,16 +9,16 @@ class MNISTLogReg:
         self.global_step = None
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
 
-    def _create_summaries(self):
-        base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-        with tf.name_scope('summaries/train'):
-            train_loss = tf.summary.scalar('loss', self.loss)
-            train_histo_loss = tf.summary.histogram(
-                'histogram_loss', self.loss
-            )
-            train_summaries = [train_loss, train_histo_loss]
-            train_summaries.extend(base_summaries)
-            self.train_summary_op = tf.summary.merge(train_summaries)
+    # def _create_summaries(self):
+    #     base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
+    #     with tf.name_scope('summaries/train'):
+    #         train_loss = tf.summary.scalar('loss', self.loss)
+    #         train_histo_loss = tf.summary.histogram(
+    #             'histogram_loss', self.loss
+    #         )
+    #         train_summaries = [train_loss, train_histo_loss]
+    #         train_summaries.extend(base_summaries)
+    #         self.train_summary_op = tf.summary.merge(train_summaries)
 
     def build_network(self, features, targets):
 
@@ -68,4 +68,4 @@ class MNISTLogReg:
                 learning_rate=self.learning_rate
             ).minimize(self.loss, global_step=self.global_step)
 
-        self._create_summaries()
+        # self._create_summaries()

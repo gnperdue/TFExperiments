@@ -16,6 +16,7 @@ import logging
 from tfmnist.models import MNISTLogReg as MNISTModel
 # from tfmnist.data_readers import make_mnist_hdf5iterators as batch_generator
 from tfmnist.data_readers import make_mnist_tfreciterators as batch_generator
+from tfmnist.summaries import create_or_add_summaries_op
 
 tf.logging.set_verbosity(tf.logging.DEBUG)
 
@@ -26,13 +27,47 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 
 
+def train_one_epoch(train_file, model_dir):
+    tf.reset_default_graph()
+    ckpt_dir = model_dir + '/checkpoints'
+
+    with tf.Graph().as_default() as g:
+        with tf.Session(graph=g) as sess:
+
+            model = MNISTModel()
+            with tf.variable_scope('input'):
+                features, targets = batch_generator(
+                    validation_file, batch_size=128, num_epochs=1,
+                    use_oned_data=True
+                )
+            model.build_network(features, targets)
+
+    pass
+
+
+def validate_one_epoch(validation_file, model_dir):
+    tf.reset_default_graph()
+    ckpt_dir = model_dir + '/checkpoints'
+
+    with tf.Graph().as_default() as g:
+        with tf.Session(graph=g) as sess:
+
+            model = MNISTModel()
+            with tf.variable_scope('input'):
+                features, targets = batch_generator(
+                    validation_file, batch_size=128, num_epochs=1,
+                    use_oned_data=True
+                )
+            model.build_network(features, targets)
+
+    pass
+
+
 def train(n_batches, train_file, model_dir):
     tf.reset_default_graph()
     ckpt_dir = model_dir + '/checkpoints'
-    run_dest_dir = model_dir + '/%d' % time.time()
 
     with tf.Graph().as_default() as g:
-
         with tf.Session(graph=g) as sess:
 
             model = MNISTModel()
@@ -42,7 +77,7 @@ def train(n_batches, train_file, model_dir):
                     use_oned_data=True
                 )
             model.build_network(features, targets)
-            writer = tf.summary.FileWriter(run_dest_dir)
+            writer = tf.summary.FileWriter(model_dir)
             saver = tf.train.Saver(save_relative_paths=True)
 
             sess.run(tf.global_variables_initializer())
@@ -57,10 +92,14 @@ def train(n_batches, train_file, model_dir):
             initial_step = model.global_step.eval()
             LOGGER.info('initial step = {}'.format(initial_step))
 
+            summary_op = create_or_add_summaries_op(
+                'summaries', 'loss', model.loss
+            )
+
             try:
                 for b_num in range(initial_step, initial_step + n_batches):
                     _, loss_batch, summary_t = sess.run(
-                        [model.optimizer, model.loss, model.train_summary_op]
+                        [model.optimizer, model.loss, summary_op]
                     )
                     LOGGER.info(
                         ' Loss @step {}: {:5.1f}'.format(b_num, loss_batch)
