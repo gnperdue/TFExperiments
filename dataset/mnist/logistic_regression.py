@@ -93,8 +93,8 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
                 'summaries', 'loss', loss_op
             )
 
-            # set up writer and saver _after_ you've set up vars to be saved
-            writer = tf.summary.FileWriter(run_dest_dir)
+            # set up writer _after_ you've set up vars to be saved
+            writer = tf.summary.FileWriter(run_dest_dir, graph=g)
             saver = tf.train.Saver(save_relative_paths=True)
 
             # variable initialization
