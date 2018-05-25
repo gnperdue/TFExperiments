@@ -7,10 +7,6 @@ class MNISTLogReg:
 
     def loss(self, features, targets):
 
-        self.global_step = tf.Variable(
-            0, dtype=tf.int32, trainable=False, name='global_step'
-        )
-
         with tf.variable_scope('model'):
             W = tf.get_variable(
                 name='weights',

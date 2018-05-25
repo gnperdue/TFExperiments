@@ -71,29 +71,17 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
     with tf.Graph().as_default() as g:
         with tf.Session(graph=g) as sess:
 
+            # set up model
             model = MNISTModel()
             with tf.variable_scope('input'):
                 features, targets = batch_generator(
                     train_file, batch_size=128, num_epochs=1,
                     use_oned_data=True
                 )
+
+            # define all ops
             loss_op = model.loss(features, targets)
-            writer = tf.summary.FileWriter(run_dest_dir)
-            saver = tf.train.Saver(save_relative_paths=True)
-
-            sess.run(tf.global_variables_initializer())
-            sess.run(tf.local_variables_initializer())
-
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-                LOGGER.info('Restored session from {}'.format(ckpt_dir))
-
-            writer.add_graph(sess.graph)
             gstep_tensr = tf.train.get_or_create_global_step()
-            initial_step = gstep_tensr.eval()
-            LOGGER.info('initial step = {}'.format(initial_step))
-
             with tf.variable_scope('training'):
                 optimizer = tf.train.GradientDescentOptimizer(
                     learning_rate=learning_rate
@@ -101,11 +89,30 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
                 train_op = optimizer.minimize(
                     loss_op, global_step=gstep_tensr
                 )
-
             summary_op = create_or_add_summaries_op(
                 'summaries', 'loss', loss_op
             )
 
+            # set up writer and saver _after_ you've set up vars to be saved
+            writer = tf.summary.FileWriter(run_dest_dir)
+            saver = tf.train.Saver(save_relative_paths=True)
+
+            # variable initialization
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+
+            # checkpoint and state management
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+                LOGGER.info('Restored session from {}'.format(ckpt_dir))
+            writer.add_graph(sess.graph)
+
+            # prep for training
+            initial_step = gstep_tensr.eval()
+            LOGGER.info('initial step = {}'.format(initial_step))
+
+            # train
             try:
                 for b_num in range(initial_step, initial_step + n_batches):
                     _, loss_batch, summary_t = sess.run(
