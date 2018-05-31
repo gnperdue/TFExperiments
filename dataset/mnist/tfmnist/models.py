@@ -5,7 +5,7 @@ class MNISTLogReg:
     def __init__(self):
         self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
 
-    def loss(self, features, targets):
+    def logits(self, features):
 
         with tf.variable_scope('model'):
             W = tf.get_variable(
@@ -26,6 +26,10 @@ class MNISTLogReg:
                 tf.matmul(features, W), b, name='logits'
             )
 
+        return logits
+
+    def loss(self, logits, targets):
+
         with tf.variable_scope('loss'):
             regularization_losses = sum(
                 tf.get_collection(
@@ -41,4 +45,28 @@ class MNISTLogReg:
             ) + regularization_losses
 
         return loss
+
+    def softmax_predictions(self, logits):
+
+        with tf.variable_scope('loss'):
+            sftmx_predictions = tf.nn.softmax(logits, name='predictions')
+
+        return sftmx_predictions
+
+    def accuracy(self, softmax_predictions, targets):
+        """ predictions are softmax vectors, targets are one-hot """
+
+        with tf.variable_scope('loss'):
+            correct_predictions = tf.equal(
+                tf.argmax(softmax_predictions, 1), tf.argmax(targets, 1),
+                name='correct_predictions'
+            )
+            accuracy = tf.divide(
+                tf.reduce_sum(tf.cast(correct_predictions, tf.float32)),
+                tf.cast(tf.shape(targets)[0], tf.float32),
+                name='accuracy'
+            )
+
+        return accuracy
+
 
