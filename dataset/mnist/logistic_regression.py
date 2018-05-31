@@ -80,7 +80,10 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
                 )
 
             # define all ops
-            loss_op = model.loss(features, targets)
+            logits = model.logits(features)
+            loss_op = model.loss(logits, targets)
+            sftmx_predictions = model.softmax_predictions(logits)
+            accuracy_op = model.accuracy(sftmx_predictions, targets)
             gstep_tensr = tf.train.get_or_create_global_step()
             with tf.variable_scope('training'):
                 optimizer = tf.train.GradientDescentOptimizer(
@@ -91,6 +94,9 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
                 )
             summary_op = create_or_add_summaries_op(
                 'summaries', 'loss', loss_op
+            )
+            summary_op = create_or_add_summaries_op(
+                'summaries', 'accuracy', accuracy_op
             )
 
             # set up writer _after_ you've set up vars to be saved
