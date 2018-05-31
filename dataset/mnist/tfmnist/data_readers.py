@@ -77,12 +77,13 @@ def _parse_mnist_tfrec(tfrecord, features_shape):
     features = tf.cast(features, tf.float32)
     targets = tf.decode_raw(tfrecord_features['targets'], tf.uint8)
     targets = tf.one_hot(indices=targets, depth=10, on_value=1, off_value=0)
+    targets = tf.reshape(targets, [10])
     targets = tf.cast(targets, tf.float32)
     return features, targets
 
 
-def make_mnist_tfrecdataset(
-        tfrecfile, batch_size, num_epochs, use_oned_data, shuffle=False
+def make_mnist_tfrecdset(
+        tfrecfile, batch_size, num_epochs, use_oned_data=False, shuffle=False
 ):
     if use_oned_data:
         features_shape = [784]
@@ -102,9 +103,9 @@ def make_mnist_tfrecdataset(
 
 
 def make_mnist_tfreciterators(
-        tfrecfile, batch_size, num_epochs, use_oned_data, shuffle=False
+        tfrecfile, batch_size, num_epochs, use_oned_data=False, shuffle=False
 ):
-    dataset = make_mnist_tfrecdataset(
+    dataset = make_mnist_tfrecdset(
         tfrecfile, batch_size, num_epochs, use_oned_data, shuffle
     )
     iterator = dataset.make_one_shot_iterator()
@@ -119,12 +120,21 @@ def _get_test_hdf5():
     return TFILE
 
 
-def test_graph_one_shot_iterator_hdf5read():
-    hdf5_file = _get_test_hdf5()
+def _get_test_tfrec():
+    import os
+    DDIR = os.environ['HOME'] + '/Dropbox/Data/RandomData/TensorFlow'
+    TFILE = DDIR + '/mnist_valid.tfrecord.gz'
+    return TFILE
+
+
+def test_graph_one_shot_iterator(
+        mkiter_fn=make_mnist_hdf5iterators, getdata_fn=_get_test_hdf5
+):
+    data_file = getdata_fn()
     batch_size = 25
     num_epochs = 1
-    feats, labs = make_mnist_hdf5iterators(
-        hdf5_file, batch_size, num_epochs
+    feats, labs = mkiter_fn(
+        data_file, batch_size, num_epochs
     )
     with tf.Session() as sess:
         counter = 0
@@ -141,15 +151,39 @@ def test_graph_one_shot_iterator_hdf5read():
             print(e)
 
 
-def test_eager_one_shot_iterator_hdf5read():
-    hdf5_file = _get_test_hdf5()
+def test_graph_one_shot_iterator_hdf5read():
+    getdata_fn = _get_test_hdf5
+    mkiter_fn = make_mnist_hdf5iterators
+    test_graph_one_shot_iterator(mkiter_fn=mkiter_fn, getdata_fn=getdata_fn)
+
+
+def test_graph_one_shot_iterator_tfrecread():
+    getdata_fn = _get_test_tfrec
+    mkiter_fn = make_mnist_tfreciterators
+    test_graph_one_shot_iterator(mkiter_fn=mkiter_fn, getdata_fn=getdata_fn)
+
+
+def test_eager_one_shot_iterator(mkdset_fn, getdata_fn):
+    data_file = getdata_fn()
     batch_size = 25
     num_epochs = 1
     tfe = tf.contrib.eager
     tf.enable_eager_execution()
-    targets_and_labels = make_mnist_hdf5dset(
-        hdf5_file, batch_size, num_epochs, use_oned_data=True
+    targets_and_labels = mkdset_fn(
+        data_file, batch_size, num_epochs, use_oned_data=True
     )
 
     for i, (fs, ls) in enumerate(tfe.Iterator(targets_and_labels)):
         print(fs.shape, fs.dtype, ls.shape, ls.dtype)
+
+
+def test_eager_one_shot_iterator_hdf5read():
+    getdata_fn = _get_test_hdf5
+    mkdset_fn = make_mnist_hdf5dset
+    test_eager_one_shot_iterator(mkdset_fn=mkdset_fn, getdata_fn=getdata_fn)
+
+
+def test_eager_one_shot_iterator_tfrecread():
+    getdata_fn = _get_test_tfrec
+    mkdset_fn = make_mnist_tfrecdset
+    test_eager_one_shot_iterator(mkdset_fn=mkdset_fn, getdata_fn=getdata_fn)
