@@ -48,7 +48,7 @@ class MNISTLogReg:
 
     def softmax_predictions(self, logits):
 
-        with tf.variable_scope('loss'):
+        with tf.variable_scope('predictions'):
             sftmx_predictions = tf.nn.softmax(logits, name='predictions')
 
         return sftmx_predictions
@@ -56,7 +56,7 @@ class MNISTLogReg:
     def accuracy(self, softmax_predictions, targets):
         """ predictions are softmax vectors, targets are one-hot """
 
-        with tf.variable_scope('loss'):
+        with tf.variable_scope('accuracy'):
             correct_predictions = tf.equal(
                 tf.argmax(softmax_predictions, 1), tf.argmax(targets, 1),
                 name='correct_predictions'

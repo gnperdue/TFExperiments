@@ -13,11 +13,10 @@ def create_or_add_summaries_op(
         scope_name, new_name, new_op
 ):
     base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
-    with tf.name_scope(scope_name):
-        new_summary = tf.summary.scalar(new_name, new_op)
-        summaries = [new_summary]
-        summaries.extend(base_summaries)
-        # does this handle repeats?
-        summary_op = tf.summary.merge(summaries)
-        return summary_op
+    new_summary = tf.summary.scalar(new_name, new_op)
+    summaries = [new_summary]
+    summaries.extend(base_summaries)
+    # does this handle repeats?
+    summary_op = tf.summary.merge(summaries)
+    return summary_op
 

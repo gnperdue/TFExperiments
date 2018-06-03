@@ -27,46 +27,94 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 
 
-def train_one_epoch(train_file, model_dir):
-    tf.reset_default_graph()
-    ckpt_dir = model_dir + '/checkpoints'
+def create_full_summary_op(scope_name, loss_op, accuracy_op):
+    with tf.variable_scope(scope_name, reuse=True):
+        summary_op = create_or_add_summaries_op(
+            scope_name, 'loss', loss_op
+        )
+        summary_op = create_or_add_summaries_op(
+            scope_name, 'accuracy', accuracy_op
+        )
+    return summary_op
+    
 
-    with tf.Graph().as_default() as g:
-        with tf.Session(graph=g) as sess:
-
-            model = MNISTModel()
-            with tf.variable_scope('input'):
-                features, targets = batch_generator(
-                    validation_file, batch_size=128, num_epochs=1,
-                    use_oned_data=True
-                )
-            model.build_network(features, targets)
-
-    pass
-
-
-def validate_one_epoch(validation_file, model_dir):
-    tf.reset_default_graph()
-    ckpt_dir = model_dir + '/checkpoints'
-
-    with tf.Graph().as_default() as g:
-        with tf.Session(graph=g) as sess:
-
-            model = MNISTModel()
-            with tf.variable_scope('input'):
-                features, targets = batch_generator(
-                    validation_file, batch_size=128, num_epochs=1,
-                    use_oned_data=True
-                )
-            model.build_network(features, targets)
-
-    pass
-
-
-def train(n_batches, train_file, model_dir, learning_rate=0.01):
-    tf.reset_default_graph()
+def get_ckpt_and_run_dest(model_dir):
     ckpt_dir = model_dir + '/checkpoints'
     run_dest_dir = model_dir + '/%d' % time.time()
+    return ckpt_dir, run_dest_dir
+
+
+def get_loss_and_acc_ops(model, features, targets):
+    logits = model.logits(features)
+    sftmx_predictions = model.softmax_predictions(logits)
+    loss_op = model.loss(logits, targets)
+    accuracy_op = model.accuracy(sftmx_predictions, targets)
+    return loss_op, accuracy_op
+
+
+def validate_one_epoch(
+        validation_file, ckpt_dir, run_dest_dir
+):
+    n_batches = 10
+    tf.reset_default_graph()
+
+    with tf.Graph().as_default() as g:
+        with tf.Session(graph=g) as sess:
+
+            # set up model
+            model = MNISTModel()
+            with tf.variable_scope('input'):
+                features, targets = batch_generator(
+                    validation_file, batch_size=128, num_epochs=1,
+                    use_oned_data=True
+                )
+
+            # define all ops
+            loss_op, accuracy_op = get_loss_and_acc_ops(
+                model, features, targets
+            )
+            gstep_tensr = tf.train.get_or_create_global_step()
+            summary_op = create_full_summary_op(
+                'summaries/valid', loss_op, accuracy_op
+            )
+
+            # set up writer _after_ you've set up vars to be saved
+            writer = tf.summary.FileWriter(run_dest_dir, graph=g)
+            saver = tf.train.Saver(save_relative_paths=True)
+
+            # variable initialization
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
+
+            # checkpoint and state management
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+                LOGGER.info('Restored session from {}'.format(ckpt_dir))
+
+            initial_step = gstep_tensr.eval()
+            LOGGER.info('initial step = {}'.format(initial_step))
+
+            # validate
+            try:
+                for b_num in range(initial_step, initial_step + n_batches):
+                    loss_batch, summary_t = sess.run([loss_op, summary_op])
+                    LOGGER.info(
+                        'Validation Loss @step {}: {:5.1f}'.format(
+                            b_num, loss_batch
+                        )
+                    )
+                    writer.add_summary(summary_t, global_step=b_num)
+            except tf.errors.OutOfRangeError:
+                LOGGER.info('Validation stopped - queue is empty.')
+
+        writer.close()
+
+
+def train_one_epoch(
+        n_batches, train_file, ckpt_dir, run_dest_dir, learning_rate=0.01
+):
+    tf.reset_default_graph()
 
     with tf.Graph().as_default() as g:
         with tf.Session(graph=g) as sess:
@@ -80,10 +128,9 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
                 )
 
             # define all ops
-            logits = model.logits(features)
-            loss_op = model.loss(logits, targets)
-            sftmx_predictions = model.softmax_predictions(logits)
-            accuracy_op = model.accuracy(sftmx_predictions, targets)
+            loss_op, accuracy_op = get_loss_and_acc_ops(
+                model, features, targets
+            )
             gstep_tensr = tf.train.get_or_create_global_step()
             with tf.variable_scope('training'):
                 optimizer = tf.train.GradientDescentOptimizer(
@@ -92,11 +139,8 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
                 train_op = optimizer.minimize(
                     loss_op, global_step=gstep_tensr
                 )
-            summary_op = create_or_add_summaries_op(
-                'summaries', 'loss', loss_op
-            )
-            summary_op = create_or_add_summaries_op(
-                'summaries', 'accuracy', accuracy_op
+            summary_op = create_full_summary_op(
+                'summaries/train', loss_op, accuracy_op
             )
 
             # set up writer _after_ you've set up vars to be saved
@@ -134,6 +178,17 @@ def train(n_batches, train_file, model_dir, learning_rate=0.01):
 
         writer.close()
 
+
+def train(n_batches, train_file, valid_file, model_dir, learning_rate=0.01):
+
+    n_epochs = 2
+    for i in range(n_epochs):
+        ckpt_dir, run_dest_dir = get_ckpt_and_run_dest(model_dir)
+        train_one_epoch(
+            n_batches, train_file, ckpt_dir, run_dest_dir, learning_rate
+        )
+        validate_one_epoch(valid_file, ckpt_dir, run_dest_dir)
+
     LOGGER.info('Finished training...')
 
 
@@ -149,11 +204,15 @@ if __name__ == '__main__':
     parser.add_option('-t', '--train-file', dest='train_file',
                       help='Trail file', metavar='TRAINFILE',
                       default='train.dat', type='string')
+    parser.add_option('-v', '--valid-file', dest='valid_file',
+                      help='Validation file', metavar='VALIDFILE',
+                      default='valid.dat', type='string')
 
     (options, args) = parser.parse_args()
 
     train(
         n_batches=options.n_batches,
+        train_file=options.train_file,
+        valid_file=options.valid_file,
         model_dir=options.model_dir,
-        train_file=options.train_file
     )
