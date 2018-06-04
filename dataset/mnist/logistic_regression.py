@@ -8,6 +8,7 @@ MNISFT HDF5 records available here:
     /Users/perdue/Dropbox/Data/RandomData/hdf5
 """
 import tensorflow as tf
+import numpy as np
 
 import time
 import os
@@ -29,12 +30,8 @@ LOGGER = logging.getLogger(__name__)
 
 def create_full_summary_op(scope_name, loss_op, accuracy_op):
     with tf.variable_scope(scope_name, reuse=True):
-        summary_op = create_or_add_summaries_op(
-            scope_name, 'loss', loss_op
-        )
-        summary_op = create_or_add_summaries_op(
-            scope_name, 'accuracy', accuracy_op
-        )
+        summary_op = create_or_add_summaries_op('loss', loss_op)
+        summary_op = create_or_add_summaries_op('accuracy', accuracy_op)
     return summary_op
     
 
@@ -50,6 +47,15 @@ def get_loss_and_acc_ops(model, features, targets):
     loss_op = model.loss(logits, targets)
     accuracy_op = model.accuracy(sftmx_predictions, targets)
     return loss_op, accuracy_op
+
+
+def maybe_restore_and_write_graph(session, saver, ckpt_dir, writer=None):
+    ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
+    if ckpt and ckpt.model_checkpoint_path:
+        saver.restore(session, ckpt.model_checkpoint_path)
+        LOGGER.info('Restored session from {}'.format(ckpt_dir))
+    if writer is not None:
+        writer.add_graph(session.graph)
 
 
 def validate_one_epoch(
@@ -69,17 +75,15 @@ def validate_one_epoch(
                     use_oned_data=True
                 )
 
-            # define all ops
+            # define all ops; use accumulated stats
             loss_op, accuracy_op = get_loss_and_acc_ops(
                 model, features, targets
             )
             gstep_tensr = tf.train.get_or_create_global_step()
-            summary_op = create_full_summary_op(
-                'summaries/valid', loss_op, accuracy_op
-            )
+            losses, accuracies = [], []
 
             # set up writer _after_ you've set up vars to be saved
-            writer = tf.summary.FileWriter(run_dest_dir, graph=g)
+            writer = tf.summary.FileWriter(run_dest_dir)
             saver = tf.train.Saver(save_relative_paths=True)
 
             # variable initialization
@@ -87,10 +91,7 @@ def validate_one_epoch(
             sess.run(tf.local_variables_initializer())
 
             # checkpoint and state management
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-                LOGGER.info('Restored session from {}'.format(ckpt_dir))
+            maybe_restore_and_write_graph(sess, saver, ckpt_dir)
 
             initial_step = gstep_tensr.eval()
             LOGGER.info('initial step = {}'.format(initial_step))
@@ -98,15 +99,30 @@ def validate_one_epoch(
             # validate
             try:
                 for b_num in range(initial_step, initial_step + n_batches):
-                    loss_batch, summary_t = sess.run([loss_op, summary_op])
+                    loss_batch, accuracy_batch = sess.run([
+                        loss_op, accuracy_op
+                    ])
                     LOGGER.info(
                         'Validation Loss @step {}: {:5.1f}'.format(
                             b_num, loss_batch
                         )
                     )
-                    writer.add_summary(summary_t, global_step=b_num)
+                    losses.append(loss_batch)
+                    accuracies.append(accuracy_batch)
             except tf.errors.OutOfRangeError:
                 LOGGER.info('Validation stopped - queue is empty.')
+
+        mean_loss = np.mean(losses)
+        mean_accuracy = np.mean(accuracies)
+
+        summary = tf.Summary()
+        summary.value.add(
+            tag='summaries/valid/loss', simple_value=mean_loss
+        )
+        summary.value.add(
+            tag='summaries/valid/accuracy', simple_value=mean_accuracy
+        )
+        writer.add_summary(summary, global_step=initial_step)
 
         writer.close()
 
@@ -152,11 +168,7 @@ def train_one_epoch(
             sess.run(tf.local_variables_initializer())
 
             # checkpoint and state management
-            ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, ckpt.model_checkpoint_path)
-                LOGGER.info('Restored session from {}'.format(ckpt_dir))
-            writer.add_graph(sess.graph)
+            maybe_restore_and_write_graph(sess, saver, ckpt_dir, writer)
 
             # prep for training
             initial_step = gstep_tensr.eval()

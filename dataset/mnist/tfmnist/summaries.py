@@ -10,7 +10,7 @@ def create_or_add_summaries(
 
 
 def create_or_add_summaries_op(
-        scope_name, new_name, new_op
+        new_name, new_op
 ):
     base_summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
     new_summary = tf.summary.scalar(new_name, new_op)
