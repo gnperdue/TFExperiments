@@ -1,26 +1,25 @@
 import tensorflow as tf
+tfe = tf.contrib.eager
 
 
 class MNISTLogReg:
-    def __init__(self):
-        self.reg = tf.contrib.layers.l2_regularizer(scale=0.0001)
+    def __init__(self, l2_reg_scale=0.0001):
+        self.reg = tf.contrib.layers.l2_regularizer(scale=l2_reg_scale)
 
     def logits(self, features):
 
-        with tf.variable_scope('model'):
-            W = tf.get_variable(
-                name='weights',
-                initializer=tf.random_normal(
+        with tf.variable_scope('model', regularizer=self.reg):
+            W = tfe.Variable(
+                initial_value=tf.random_normal(
                     shape=[784, 10], mean=0.0, stddev=0.01, dtype=tf.float32
                 ),
-                regularizer=self.reg
+                name='weights',
             )
-            b = tf.get_variable(
-                name='bias',
-                initializer=tf.random_normal(
+            b = tfe.Variable(
+                initial_value=tf.random_normal(
                     shape=[10], mean=0.0, stddev=0.01, dtype=tf.float32
                 ),
-                regularizer=self.reg
+                name='bias',
             )
             logits = tf.add(
                 tf.matmul(features, W), b, name='logits'
@@ -31,11 +30,14 @@ class MNISTLogReg:
     def loss(self, logits, targets):
 
         with tf.variable_scope('loss'):
-            regularization_losses = sum(
-                tf.get_collection(
-                    tf.GraphKeys.REGULARIZATION_LOSSES
-                )
-            )
+            # this messes with tfe.Variable somehow... (obvs 0 in eager mode,
+            # but funky even in graph mode)
+            # regularization_losses = sum(
+            #     tf.get_collection(
+            #         tf.GraphKeys.REGULARIZATION_LOSSES
+            #     )
+            # )
+            regularization_losses = 0.0
             loss = tf.reduce_mean(
                 tf.nn.softmax_cross_entropy_with_logits_v2(
                     logits=logits, labels=targets
