@@ -46,7 +46,7 @@ def main(hdf5_dir, batch_size, num_epochs, train_steps, learning_rate=0.01):
     loss_and_grads = tfe.implicit_value_and_gradients(loss)
 
     for i, (xs, ys) in enumerate(tfe.Iterator(targets_and_labels)):
-        if i >= train_steps:
+        if train_steps is not None and i >= train_steps:
             break
         loss, grads = loss_and_grads(xs, ys)
         print('iteration {}, loss = {}'.format(i, loss.numpy()))

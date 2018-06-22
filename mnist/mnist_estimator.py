@@ -27,6 +27,8 @@ def main(hdf5_dir, batch_size, num_epochs, train_steps):
         model_dir='chkpts/mnist_estimator'
     )
 
+    # model_fn must follow a certain signature; here, `params` is passed
+    # to `model_fn` to control hyper-pars
     classifier = tf.estimator.Estimator(
         model_fn=mnist_conv,
         params={
@@ -36,7 +38,8 @@ def main(hdf5_dir, batch_size, num_epochs, train_steps):
         },
         config=run_config,
     )
-    
+
+    # if steps is None, train until data ends (keyed by num_epochs)
     classifier.train(
         input_fn=lambda: make_mnist_iterators(
             data['train'], batch_size, num_epochs
