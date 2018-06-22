@@ -29,6 +29,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def create_full_summary_op(scope_name, loss_op, accuracy_op):
+    """ create a summary operation for loss and accuracy """
     with tf.variable_scope(scope_name, reuse=True):
         summary_op = create_or_add_summaries_op('loss', loss_op)
         summary_op = create_or_add_summaries_op('accuracy', accuracy_op)
@@ -36,12 +37,14 @@ def create_full_summary_op(scope_name, loss_op, accuracy_op):
     
 
 def get_ckpt_and_run_dest(model_dir):
+    """ build strings for the checkpoint dir and 'internal' run directory """
     ckpt_dir = model_dir + '/checkpoints'
     run_dest_dir = model_dir + '/%d' % time.time()
     return ckpt_dir, run_dest_dir
 
 
 def get_loss_and_acc_ops(model, features, targets):
+    """ create ops for loss and accuracy from model, features, and targs """
     logits = model.logits(features)
     sftmx_predictions = model.softmax_predictions(logits)
     loss_op = model.loss(logits, targets)
@@ -50,6 +53,7 @@ def get_loss_and_acc_ops(model, features, targets):
 
 
 def maybe_restore_and_write_graph(session, saver, ckpt_dir, writer=None):
+    """ write the graph if the Writer is provided """
     ckpt = tf.train.get_checkpoint_state(os.path.dirname(ckpt_dir))
     if ckpt and ckpt.model_checkpoint_path:
         saver.restore(session, ckpt.model_checkpoint_path)
@@ -115,6 +119,7 @@ def validate_one_epoch(
         mean_loss = np.mean(losses)
         mean_accuracy = np.mean(accuracies)
 
+        # write accumulated loss and accuracy
         summary = tf.Summary()
         summary.value.add(
             tag='summaries/valid/loss', simple_value=mean_loss
