@@ -34,7 +34,7 @@ def create_full_summary_op(scope_name, loss_op, accuracy_op):
         summary_op = create_or_add_summaries_op('loss', loss_op)
         summary_op = create_or_add_summaries_op('accuracy', accuracy_op)
     return summary_op
-    
+
 
 def get_ckpt_and_run_dest(model_dir):
     """ build strings for the checkpoint dir and 'internal' run directory """
