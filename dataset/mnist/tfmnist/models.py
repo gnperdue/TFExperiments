@@ -70,5 +70,3 @@ class MNISTLogReg:
             )
 
         return accuracy
-
-

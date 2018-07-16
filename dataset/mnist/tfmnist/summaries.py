@@ -19,4 +19,3 @@ def create_or_add_summaries_op(
     # does this handle repeats?
     summary_op = tf.summary.merge(summaries)
     return summary_op
-

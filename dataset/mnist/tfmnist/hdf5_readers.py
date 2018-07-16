@@ -12,6 +12,7 @@ class MNISTHDF5Reader:
 
     assumes stored image shape is [N, depth, H, W]
     """
+
     def __init__(self, hdf5_file):
         self._file = hdf5_file
         self._f = None
