@@ -18,8 +18,8 @@ class LayerCreator:
             )
         else:
             raise NotImplementedError(
-                'Regularization strategy ' + regularization_strategy +
-                ' is not implemented yet.'
+                'Regularization strategy ' + regularization_strategy
+                + ' is not implemented yet.'
             )
         self.use_batch_norm = use_batch_norm
         self.batch_norm_decay = 0.999
@@ -55,7 +55,7 @@ class LayerCreator:
                 data_format=self.data_format, is_training=self.is_training
             )
         return fc_lyr
-            
+
     def make_active_fc_layer(
             self, inp_lyr, name_fc_lyr,
             name_w, shp_w, name_b=None, shp_b=None,

@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def mnist_conv(features, labels, mode, params):
-    
+
     n_classes = 10
 
     # can get batch norm, etc. from params in principle
