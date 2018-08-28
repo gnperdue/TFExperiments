@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras.layers import Reshape
 from tensorflow.keras.layers import Conv2D
 from tensorflow.keras.layers import MaxPooling2D
 from tensorflow.keras.layers import Dropout
@@ -13,12 +14,14 @@ class ShallowFashionModel(keras.Model):
         super(ShallowFashionModel, self).__init__(name='shallow_fashion_model')
         self.num_classes = num_classes
         # define layers - `input_shape` on first layer?
+        self.reshape = Reshape(target_shape=[28 * 28], input_shape=(28, 28, 1))
         self.dense_1 = Dense(128, activation='relu')
-        self.dense_2 = Dense(num_classes, activation='softmax')
+        self.dense_2 = Dense(num_classes)
 
     def call(self, inputs):
         # define forward pass using layers defined in `__init__`
-        x = self.dense_1(inputs)
+        x = self.reshape(inputs)
+        x = self.dense_1(x)
         return self.dense_2(x)
 
     def compute_output_shape(self, input_shape):
@@ -43,7 +46,7 @@ class ConvFashionModel(keras.Model):
         self.flatten = Flatten()
         self.dense_1 = Dense(128, activation='relu')
         self.dropout2 = Dropout(0.5)
-        self.dense_2 = Dense(num_classes, activation='softmax')
+        self.dense_2 = Dense(num_classes)
 
     def call(self, inputs):
         # define forward pass using layers defined in `__init__`
