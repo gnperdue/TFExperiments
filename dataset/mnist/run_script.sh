@@ -16,7 +16,10 @@ VALIDFILE="${HDF5VALID}"
 TRAINFILE="${TFRECTRAIN}"
 VALIDFILE="${TFRECVALID}"
 
-python logistic_regression.py \
-  --train-file ${TRAINFILE} \
-  --valid-file ${VALIDFILE} \
-  -n 20
+SCRIPT="logistic_regression.py"
+ARGS="--train-file ${TRAINFILE} --valid-file ${VALIDFILE} -n 20"
+cat << EOF
+python $SCRIPT $ARGS
+EOF
+
+python $SCRIPT $ARGS
