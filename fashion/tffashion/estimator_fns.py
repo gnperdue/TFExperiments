@@ -35,11 +35,12 @@ def shallow_model_fn(
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         # If we are running multi-GPU, we need to wrap the optimizer!
         logits = model(features)
-        loss = tf.losses.sparse_softmax_cross_entropy(
-            labels=labels, logits=logits
+        loss = tf.losses.softmax_cross_entropy(
+            onehot_labels=labels, logits=logits
         )
         accuracy = tf.metrics.accuracy(
-            labels=labels, predictions=tf.argmax(logits, axis=1)
+            labels=tf.argmax(labels, axis=1),
+            predictions=tf.argmax(logits, axis=1)
         )
 
         # Name tensors to be logged with LoggingTensorHook.
@@ -59,15 +60,16 @@ def shallow_model_fn(
         )
     elif mode == tf.estimator.ModeKeys.EVAL:
         logits = model(features)
-        loss = tf.losses.sparse_softmax_cross_entropy(
-            labels=labels, logits=logits
+        loss = tf.losses.softmax_cross_entropy(
+            onehot_labels=labels, logits=logits
         )
         return tf.estimator.EstimatorSpec(
             mode=tf.estimator.ModeKeys.EVAL,
             loss=loss,
             eval_metric_ops={
                 'accuracy': tf.metrics.accuracy(
-                    labels=labels, predictions=tf.argmax(logits, axis=1)
+                    labels=tf.argmax(labels, axis=1),
+                    predictions=tf.argmax(logits, axis=1)
                 ),
             }
         )
