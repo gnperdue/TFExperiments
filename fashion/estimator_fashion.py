@@ -13,8 +13,9 @@ from tffashion.estimator_fns import shallow_model_fn
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', default=100, type=int, help='batch size')
-parser.add_argument('--train_steps', default=1000, type=int,
+parser.add_argument('--train_steps', default=None, type=int,
                     help='number of training steps')
+parser.add_argument('--n_epochs', default=1, type=int, help='number of epochs')
 
 # Get path to data
 TESTFILE = os.path.join(
@@ -25,7 +26,7 @@ TRAINFILE = os.path.join(
 )
 
 
-def main(batch_size, train_steps):
+def main(batch_size, train_steps, n_epochs):
 
     run_config = tf.estimator.RunConfig(
         save_checkpoints_steps=10,
@@ -40,7 +41,7 @@ def main(batch_size, train_steps):
 
     classifier.train(
         input_fn=lambda: make_fashion_iterators(
-            TRAINFILE, batch_size, num_epochs=1
+            TRAINFILE, batch_size, num_epochs=n_epochs
         ),
         steps=train_steps
     )
