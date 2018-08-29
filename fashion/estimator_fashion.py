@@ -77,7 +77,7 @@ def main(batch_size, train_steps, n_epochs):
         save_checkpoints_steps=10,
         save_summary_steps=10,
         keep_checkpoint_max=3,
-        model_dir='/tmp/estimator_fashion',
+        model_dir='/tmp/fashion',
         tf_random_seed=None,
     )
     classifier = tf.estimator.Estimator(
