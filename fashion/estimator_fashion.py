@@ -26,32 +26,67 @@ TRAINFILE = os.path.join(
 )
 
 
-def main(batch_size, train_steps, n_epochs):
-
-    run_config = tf.estimator.RunConfig(
-        save_checkpoints_steps=10,
-        keep_checkpoint_max=3,
-        model_dir='/tmp/estimator_fashion'
-    )
-    classifier = tf.estimator.Estimator(
-        model_fn=shallow_model_fn,
-        params={},
-        config=run_config
-    )
-
-    classifier.train(
+def predict(classifier, batch_size):
+    # predictions is a generator - evaluation is lazy
+    predictions = classifier.predict(
         input_fn=lambda: make_fashion_iterators(
-            TRAINFILE, batch_size, num_epochs=n_epochs
+            TESTFILE, batch_size, num_epochs=1
         ),
-        steps=train_steps
     )
+    counter = 0
+    for p in predictions:
+        print(p)
+        counter += 1
+        if counter > 10:
+            break
+
+
+def evaluate(classifier, batch_size):
     eval_result = classifier.evaluate(
         input_fn=lambda: make_fashion_iterators(
             TESTFILE, batch_size, num_epochs=1
         ),
         steps=100,
     )
-    print('\nEval set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
+    print('\nEval:')
+    print('acc: {accuracy:0.3f}, loss: {loss:0.3f}, MPCA {mpca:0.3f}'.format(
+        **eval_result
+    ))
+
+
+def train_one_epoch(classifier, batch_size, train_steps):
+    classifier.train(
+        input_fn=lambda: make_fashion_iterators(
+            TRAINFILE, batch_size, num_epochs=1
+        ),
+        steps=train_steps
+    )
+
+
+def train(classifier, batch_size, num_epochs, train_steps):
+    for i in range(num_epochs):
+        print('training epoch {}'.format(i))
+        train_one_epoch(classifier, batch_size, train_steps)
+        print('evaluation after epoch {}'.format(i))
+        evaluate(classifier, batch_size)
+
+
+def main(batch_size, train_steps, n_epochs):
+
+    run_config = tf.estimator.RunConfig(
+        save_checkpoints_steps=10,
+        save_summary_steps=10,
+        keep_checkpoint_max=3,
+        model_dir='/tmp/estimator_fashion',
+        tf_random_seed=None,
+    )
+    classifier = tf.estimator.Estimator(
+        model_fn=shallow_model_fn,
+        params={},
+        config=run_config
+    )
+    train(classifier, batch_size, n_epochs, train_steps)
+    predict(classifier, batch_size)
 
 
 if __name__ == '__main__':
