@@ -15,10 +15,9 @@ def shallow_model_fn(
     features, labels, mode, params
 ):
     model = ShallowFashionModel()
+    logits = model(features)
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-        #
-        logits = model(features)
         predictions = {
             'classes': tf.argmax(logits, axis=1),
             'probabilities': tf.nn.softmax(logits),
@@ -30,25 +29,22 @@ def shallow_model_fn(
                 'classify': tf.estimator.export.PredictOutput(predictions)
             }
         )
-    elif mode == tf.estimator.ModeKeys.TRAIN:
-        #
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+
+    loss = tf.losses.softmax_cross_entropy(
+        onehot_labels=labels, logits=logits
+    )
+    accuracy = tf.metrics.accuracy(
+        labels=tf.argmax(labels, axis=1),
+        predictions=tf.argmax(logits, axis=1)
+    )
+
+    if mode == tf.estimator.ModeKeys.TRAIN:
         # If we are running multi-GPU, we need to wrap the optimizer!
-        logits = model(features)
-        loss = tf.losses.softmax_cross_entropy(
-            onehot_labels=labels, logits=logits
-        )
-        accuracy = tf.metrics.accuracy(
-            labels=tf.argmax(labels, axis=1),
-            predictions=tf.argmax(logits, axis=1)
-        )
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
 
-        # Name tensors to be logged with LoggingTensorHook.
-        # tf.identity(LEARNING_RATE, 'learning_rate')
-        tf.identity(loss, 'cross_entropy')
-        tf.identity(accuracy[1], name='train_accuracy')
-
-        # Save accuracy scalar to Tensorboard output.
+        # Name tensors to be logged with LoggingTensorHook (??)
+        tf.identity(loss, 'cross_entropy_loss')
+        # Save accuracy scalar to Tensorboard output (loss auto-logged)
         tf.summary.scalar('train_accuracy', accuracy[1])
 
         return tf.estimator.EstimatorSpec(
@@ -58,11 +54,9 @@ def shallow_model_fn(
                 loss, tf.train.get_or_create_global_step()
             )
         )
-    elif mode == tf.estimator.ModeKeys.EVAL:
-        logits = model(features)
-        loss = tf.losses.softmax_cross_entropy(
-            onehot_labels=labels, logits=logits
-        )
+
+    if mode == tf.estimator.ModeKeys.EVAL:
+        # we get loss 'for free' as an eval_metric
         return tf.estimator.EstimatorSpec(
             mode=tf.estimator.ModeKeys.EVAL,
             loss=loss,
@@ -71,6 +65,11 @@ def shallow_model_fn(
                     labels=tf.argmax(labels, axis=1),
                     predictions=tf.argmax(logits, axis=1)
                 ),
+                'mpca': tf.metrics.mean_per_class_accuracy(
+                    labels=tf.argmax(labels, axis=1),
+                    predictions=tf.argmax(logits, axis=1),
+                    num_classes=labels.get_shape()[1]
+                )
             }
         )
 
