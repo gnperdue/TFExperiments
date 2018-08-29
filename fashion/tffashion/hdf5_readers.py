@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 
 
-class FashionHDF5Reader:
+class FashionHDF5Reader(object):
     """
     user should call `openf()` and `closef()` to start/finish.
 
