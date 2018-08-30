@@ -42,8 +42,6 @@ def test_graph_one_shot_iterator_read(
                 ))
                 total_batches += 1
                 total_examples += ls.shape[0]
-                if total_batches > 1000:
-                    break
         except tf.errors.OutOfRangeError:
             logger.info('end of dataset at total_batches={}'.format(
                 total_batches
