@@ -6,15 +6,15 @@ import logging
 import tensorflow as tf
 from tensorflow import keras
 
-from tffashion.model_classes import ShallowFashionModel
+from tffashion.model_classes import ConvFashionModel
 
 LOGGER = logging.getLogger(__name__)
 
 
-def shallow_model_fn(
+def fashion_model_fn(
     features, labels, mode, params
 ):
-    model = ShallowFashionModel()
+    model = ConvFashionModel()
     logits = model(features)
 
     if mode == tf.estimator.ModeKeys.PREDICT:

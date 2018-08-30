@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from tffashion.data_readers import make_fashion_iterators
 from tffashion.data_readers import get_data_files_dict
-from tffashion.estimator_fns import shallow_model_fn
+from tffashion.estimator_fns import fashion_model_fn
 
 
 parser = argparse.ArgumentParser()
@@ -91,7 +91,7 @@ def main(
         tf_random_seed=None,
     )
     classifier = tf.estimator.Estimator(
-        model_fn=shallow_model_fn,
+        model_fn=fashion_model_fn,
         params={},
         config=run_config
     )
