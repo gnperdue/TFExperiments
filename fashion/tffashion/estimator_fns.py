@@ -80,7 +80,7 @@ def make_shallow_keras_estimator():
     '''
     how do we connect inputs when we do this?
     '''
-    model = ShallowFashionModel()
+    model = ConvFashionModel()
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
     model.compile(loss='categorical_crossentropy', optimizer=optimizer)
     # LOGGER.info(model.summary())  # haven't called it yet
