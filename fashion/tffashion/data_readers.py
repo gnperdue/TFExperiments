@@ -50,14 +50,14 @@ def _parse_mnist_tfrec(tfrecord):
 
 
 def make_fashion_dset(
-    file_name, batch_size, num_epochs=1, tfrecord=False
+    file_name, batch_size, num_epochs=1, shuffle=False, tfrecord=False
 ):
     if tfrecord:
         ds = tf.data.TFRecordDataset([file_name], compression_type='GZIP')
-        # if shuffle:
-        #     ds = ds.shuffle(buffer_size=256)
-        ds = ds.map(_parse_mnist_tfrec).prefetch(batch_size)
+        ds = ds.map(_parse_mnist_tfrec).prefetch(10*batch_size)
         ds = ds.batch(batch_size).repeat(num_epochs)
+        if shuffle:
+            ds = ds.shuffle(buffer_size=10*batch_size)
     else:
         # make a generator function - read from HDF5
         dgen = _make_fashion_generator_fn(file_name, batch_size)
@@ -70,14 +70,15 @@ def make_fashion_dset(
             (tf.TensorShape(features_shape), tf.TensorShape(labels_shape))
         )
         # we are grabbing an entire "batch", so don't call `batch()`, etc.
-        ds = ds.prefetch(10)
-        ds = ds.shuffle(10).repeat(num_epochs)
+        ds = ds.prefetch(10).repeat(num_epochs)
+        if shuffle:
+            ds = ds.shuffle(10)
 
     return ds
 
 
 def make_fashion_iterators(
-        file_name, batch_size, num_epochs=1, tfrecord=False
+        file_name, batch_size, num_epochs=1, shuffle=False, tfrecord=False
 ):
     '''
     estimators require an input fn returning `(features, labels)` pairs, where
@@ -85,7 +86,9 @@ def make_fashion_iterators(
 
     TODO - pass a shuffle flag
     '''
-    ds = make_fashion_dset(file_name, batch_size, num_epochs, tfrecord)
+    ds = make_fashion_dset(
+        file_name, batch_size, num_epochs, shuffle, tfrecord
+    )
 
     # one_shot_iterators do not have initializers
     itrtr = ds.make_one_shot_iterator()
