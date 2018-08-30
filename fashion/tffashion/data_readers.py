@@ -6,7 +6,7 @@ import os
 import tensorflow as tf
 
 
-def _make_fashion_generator_fn(file_name):
+def _make_fashion_generator_fn(file_name, batch_size):
     """
     make a generator function that we can query for batches
     """
@@ -15,13 +15,13 @@ def _make_fashion_generator_fn(file_name):
     nevents = reader.openf()
 
     def example_generator_fn():
-        idx = 0
+        start_idx, stop_idx = 0, batch_size
         while True:
-            if idx >= nevents:
+            if stop_idx >= nevents:
                 reader.closef()
                 return
-            yield reader.get_example(idx)
-            idx += 1
+            yield reader.get_examples(start_idx, stop_idx)
+            start_idx, stop_idx = start_idx + batch_size, stop_idx + batch_size
 
     return example_generator_fn
 
@@ -56,17 +56,18 @@ def make_fashion_dset(
         ds = ds.batch(batch_size).repeat(num_epochs)
     else:
         # make a generator function - read from HDF5
-        dgen = _make_fashion_generator_fn(file_name)
+        dgen = _make_fashion_generator_fn(file_name, batch_size)
 
         # make a Dataset from a generator
-        features_shape = [28, 28, 1]
-        labels_shape = [10]
+        features_shape = [batch_size, 28, 28, 1]
+        labels_shape = [batch_size, 10]
         ds = tf.data.Dataset.from_generator(
             dgen, (tf.float32, tf.uint8),
             (tf.TensorShape(features_shape), tf.TensorShape(labels_shape))
         )
-        ds = ds.prefetch(10*batch_size)
-        ds = ds.shuffle(10*batch_size).batch(batch_size).repeat(num_epochs)
+        # we are grabbing an entire "batch", so don't call `batch()`, etc.
+        ds = ds.prefetch(10)
+        ds = ds.shuffle(10).repeat(num_epochs)
 
     return ds
 
