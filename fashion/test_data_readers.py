@@ -32,20 +32,25 @@ def test_graph_one_shot_iterator_read(
 ):
     feats, labs = make_fashion_iterators(hdf5_file, batch_size, num_epochs)
     with tf.Session() as sess:
-        counter = 0
+        total_batches = 0
+        total_examples = 0
         try:
             while True:
                 fs, ls = sess.run([feats, labs])
                 logger.info('{}, {}, {}, {}'.format(
                     fs.shape, fs.dtype, ls.shape, ls.dtype
                 ))
-                counter += 1
-                if counter > 1000:
+                total_batches += 1
+                total_examples += ls.shape[0]
+                if total_batches > 1000:
                     break
         except tf.errors.OutOfRangeError:
-            logger.info('end of dataset at counter = {}'.format(counter))
+            logger.info('end of dataset at total_batches={}'.format(
+                total_batches
+            ))
         except Exception as e:
             logger.error(e)
+    logger.info('saw {} total examples'.format(total_examples))
 
 
 def test_eager_one_shot_iterator_read(
@@ -57,10 +62,13 @@ def test_eager_one_shot_iterator_read(
         hdf5_file, batch_size, num_epochs, use_oned_data=True
     )
 
+    total_examples = 0
     for i, (fs, ls) in enumerate(tfe.Iterator(targets_and_labels)):
         logger.info('{}, {}, {}, {}'.format(
             fs.shape, fs.dtype, ls.shape, ls.dtype
         ))
+        total_examples += ls.shape[0]
+    logger.info('saw {} total examples'.format(total_examples))
 
 
 def main(eager, batch_size):
