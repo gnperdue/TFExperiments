@@ -33,18 +33,6 @@ class FashionHDF5Reader(object):
         except AttributeError:
             print('hdf5 file is not open yet.')
 
-    def get_images(self, start_idx, stop_idx):
-        tnsr = self._f['fashion/images'][start_idx: stop_idx]
-        tnsr = np.moveaxis(tnsr, 1, -1)
-        return tnsr
-
-    def get_labels(self, start_idx, stop_idx):
-        '''one-hot labels'''
-        raw = self._f['fashion/labels'][start_idx: stop_idx].reshape([-1])
-        ret = np.zeros((raw.size, self._nlabels), dtype=np.uint8)
-        ret[np.arange(raw.size), raw] = 1
-        return ret
-
     def get_example(self, idx):
         image = self._f['fashion/images'][idx]
         image = np.moveaxis(image, 0, -1)
@@ -57,3 +45,11 @@ class FashionHDF5Reader(object):
         image, label = self.get_example(idx)
         image = np.reshape(image, (28 * 28))
         return image, label
+
+    def get_examples(self, start_idx, stop_idx):
+        image = self._f['fashion/images'][start_idx: stop_idx]
+        image = np.moveaxis(image, 1, -1)
+        label = self._f['fashion/labels'][start_idx: stop_idx].reshape([-1])
+        oh_label = np.zeros((label.size, self._nlabels), dtype=np.uint8)
+        oh_label[np.arange(label.size), label] = 1
+        return image, oh_label
