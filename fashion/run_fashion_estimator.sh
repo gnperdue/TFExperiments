@@ -13,6 +13,7 @@ DATA_DIR="/Users/perdue/Dropbox/Data/RandomData/hdf5"
 TFRECORD=""
 
 
-ARGS="--batch_size ${BATCH_SIZE} --train_steps ${TRAIN_STEPS} --num_epochs ${NUM_EPOCHS} --data_dir ${DATA_DIR} $TFRECORD --model_dir $MODELDIR"
+ARGS="--batch-size ${BATCH_SIZE} --train-steps ${TRAIN_STEPS} --num-epochs
+${NUM_EPOCHS} --data-dir ${DATA_DIR} $TFRECORD --model-dir $MODELDIR"
 
 python $EXE $ARGS
