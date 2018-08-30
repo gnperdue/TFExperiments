@@ -36,7 +36,7 @@ class ShallowFashionModel(keras.Model):
 class ConvFashionModel(keras.Model):
 
     def __init__(self, num_classes=10):
-        super(ShallowFashionModel, self).__init__(name='shallow_fashion_model')
+        super(ConvFashionModel, self).__init__(name='shallow_fashion_model')
         self.num_classes = num_classes
         # define layers - `input_shape` on first layer?
         self.conv_1 = Conv2D(32, kernel_size=(3, 3), activation='relu')
