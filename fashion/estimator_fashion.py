@@ -11,15 +11,15 @@ from tffashion.estimator_fns import shallow_model_fn
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=100, type=int, help='batch size')
-parser.add_argument('--train_steps', default=None, type=int,
+parser.add_argument('--batch-size', default=100, type=int, help='batch size')
+parser.add_argument('--train-steps', default=None, type=int,
                     help='number of training steps')
-parser.add_argument('--num_epochs', default=1, type=int,
+parser.add_argument('--num-epochs', default=1, type=int,
                     help='number of epochs')
-parser.add_argument('--data_dir', default='', type=str, help='data dir')
+parser.add_argument('--data-dir', default='', type=str, help='data dir')
 parser.add_argument('--tfrecord', default=False, action='store_true',
                     help='use tfrecords')
-parser.add_argument('--model_dir', default='fashion', type=str,
+parser.add_argument('--model-dir', default='fashion', type=str,
                     help='model dir')
 
 
