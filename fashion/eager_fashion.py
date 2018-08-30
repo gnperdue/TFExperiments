@@ -6,7 +6,7 @@ import argparse
 import os
 import tensorflow as tf
 
-from tffashion.model_classes import ShallowFashionModel
+from tffashion.model_classes import ConvFashionModel
 from tffashion.data_readers import make_fashion_dset
 
 tfe = tf.contrib.eager
@@ -14,9 +14,9 @@ tf.logging.set_verbosity(tf.logging.DEBUG)
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=100, type=int, help='batch size')
-parser.add_argument('--train_steps', default=1000, type=int,
-                    help='number of training steps')
+parser.add_argument('--batch-size', default=100, type=int, help='batch size')
+parser.add_argument('--num-epochs', default=1, type=int,
+                    help='number of training epochs')
 
 # Get path to data
 TESTFILE = os.path.join(
@@ -60,8 +60,6 @@ def train(
             if i % 20 == 0:
                 print('loss at step {:03d}: {:.3f}'.format(i, train_loss))
                 checkpoint.save(file_prefix=checkpoint_prefix)
-            if i > 20:
-                break
         checkpoint.save(file_prefix=checkpoint_prefix)
 
 
@@ -85,10 +83,12 @@ def test(model, dataset):
     #     tf.contrib.summary.scalar('accuracy', accuracy.result())
 
 
-def main(batch_size, train_steps):
+def main(batch_size, num_epochs):
     tf.enable_eager_execution()
-    model = ShallowFashionModel()
-    dataset = make_fashion_dset(TRAINFILE, batch_size, num_epochs=1)
+    model = ConvFashionModel()
+    dataset = make_fashion_dset(
+        TRAINFILE, batch_size, num_epochs=num_epochs, shuffle=True
+    )
 
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
 
