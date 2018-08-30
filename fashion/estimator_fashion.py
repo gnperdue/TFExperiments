@@ -33,6 +33,7 @@ def predict(classifier, data_files, hyper_pars):
     )
     counter = 0
     for p in predictions:
+        # TODO? - add persistency mechanism for predictions
         print(p)
         counter += 1
         if counter > 10:
@@ -57,7 +58,7 @@ def train_one_epoch(classifier, data_files, hyper_pars):
     classifier.train(
         input_fn=lambda: make_fashion_iterators(
             data_files['train'], hyper_pars['batch_size'],
-            tfrecord=hyper_pars['tfrecord']
+            shuffle=True, tfrecord=hyper_pars['tfrecord']
         ),
         steps=hyper_pars['train_steps']
     )
