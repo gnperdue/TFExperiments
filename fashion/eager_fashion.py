@@ -17,14 +17,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--batch-size', default=100, type=int, help='batch size')
 parser.add_argument('--num-epochs', default=1, type=int,
                     help='number of training epochs')
-
-# Get path to data
-TESTFILE = os.path.join(
-    os.environ['HOME'], 'Dropbox/Data/RandomData/hdf5/fashion_test.hdf5'
-)
-TRAINFILE = os.path.join(
-    os.environ['HOME'], 'Dropbox/Data/RandomData/hdf5/fashion_train.hdf5'
-)
+parser.add_argument('--data-dir', default='', type=str, help='data dir')
+parser.add_argument('--model-dir', default='fashion', type=str,
+                    help='model dir')
 
 
 def loss(model, x, y):
@@ -83,8 +78,13 @@ def test(model, dataset):
     #     tf.contrib.summary.scalar('accuracy', accuracy.result())
 
 
-def main(batch_size, num_epochs):
+def main(batch_size, num_epochs, data_dir, model_dir):
     tf.enable_eager_execution()
+
+    # Get path to data
+    TESTFILE = os.path.join(data_dir, 'fashion_test.hdf5')
+    TRAINFILE = os.path.join(data_dir, 'fashion_train.hdf5')
+
     model = ConvFashionModel()
     dataset = make_fashion_dset(
         TRAINFILE, batch_size, num_epochs=num_epochs, shuffle=True
@@ -92,7 +92,6 @@ def main(batch_size, num_epochs):
 
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
 
-    model_dir = '/tmp/fashion'
     # writer _can_ make its own log directory
     writer = tf.contrib.summary.create_file_writer(model_dir)
     global_step = tf.train.get_or_create_global_step()
