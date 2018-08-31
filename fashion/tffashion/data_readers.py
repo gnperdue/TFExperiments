@@ -70,7 +70,9 @@ def make_fashion_dset(
             (tf.TensorShape(features_shape), tf.TensorShape(labels_shape))
         )
         # we are grabbing an entire "batch", so don't call `batch()`, etc.
-        ds = ds.prefetch(10).repeat(num_epochs)
+        # also, note, there are issues with doing more than one epoch for
+        # `from_generator` - so do just one epoch at a time for now.
+        ds = ds.prefetch(10)
         if shuffle:
             ds = ds.shuffle(10)
 
