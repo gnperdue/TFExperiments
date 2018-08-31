@@ -63,8 +63,8 @@ def make_fashion_dset(
         dgen = _make_fashion_generator_fn(file_name, batch_size)
 
         # make a Dataset from a generator
-        features_shape = [batch_size, 28, 28, 1]
-        labels_shape = [batch_size, 10]
+        features_shape = [None, 28, 28, 1]
+        labels_shape = [None, 10]
         ds = tf.data.Dataset.from_generator(
             dgen, (tf.float32, tf.uint8),
             (tf.TensorShape(features_shape), tf.TensorShape(labels_shape))
