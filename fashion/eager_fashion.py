@@ -1,3 +1,7 @@
+'''
+Note - multi-epoch training for HDF5 inputs will fail with this structure.
+Need to make a `train_one_epoch` function that regens the dataset each time.
+'''
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -79,6 +83,10 @@ def test(model, dataset):
 
 
 def main(batch_size, num_epochs, data_dir, model_dir):
+    if num_epochs != 1:
+        print(__doc__)
+        import sys
+        sys.exit(1)
     tf.enable_eager_execution()
 
     # Get path to data
