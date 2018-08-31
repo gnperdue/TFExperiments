@@ -16,7 +16,7 @@ TFILE = os.path.join(
     os.environ['HOME'], 'Dropbox/Data/RandomData/hdf5/fashion_test.hdf5'
 )
 
-logfilename = 'log_' + __file__.split('.')[0] + '.txt'
+logfilename = 'log_' + __file__.split('/')[-1].split('.')[0] + '.txt'
 logging.basicConfig(
     filename=logfilename, level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -57,7 +57,7 @@ def test_eager_one_shot_iterator_read(
     tfe = tf.contrib.eager
     tf.enable_eager_execution()
     targets_and_labels = make_fashion_dset(
-        hdf5_file, batch_size, num_epochs, use_oned_data=True
+        hdf5_file, batch_size, num_epochs
     )
 
     total_examples = 0
