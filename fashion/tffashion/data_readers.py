@@ -81,8 +81,6 @@ def make_fashion_iterators(
     '''
     estimators require an input fn returning `(features, labels)` pairs, where
     `features` is a dictionary of features.
-
-    TODO - pass a shuffle flag
     '''
     ds = make_fashion_dset(
         file_name, batch_size, num_epochs, shuffle, tfrecord
