@@ -9,10 +9,6 @@ import tensorflow as tf
 def _make_fashion_generator_fn(file_name, batch_size):
     """
     make a generator function that we can query for batches
-
-    NOTE: the batch_size must divide evenly into the number of events for the
-    HDF5 `from_generator` approach to work! (Can always use batch_size==1 to
-    get all events during inference if there is no other way, etc.)
     """
     from tffashion.hdf5_readers import FashionHDF5Reader as HDF5Reader
     reader = HDF5Reader(file_name)
