@@ -6,7 +6,7 @@ import logging
 import tensorflow as tf
 from tensorflow import keras
 
-from tffashion.model_classes import ConvFashionModel
+from tffashion.keras_model_classes import ConvFashionModel
 
 LOGGER = logging.getLogger(__name__)
 

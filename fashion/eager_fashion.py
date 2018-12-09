@@ -10,7 +10,7 @@ import argparse
 import os
 import tensorflow as tf
 
-from tffashion.model_classes import ConvFashionModel
+from tffashion.keras_model_classes import ConvFashionModel
 from tffashion.data_readers import make_fashion_dset
 
 tfe = tf.contrib.eager

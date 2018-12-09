@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 import tensorflow as tf
-from tffashion.model_classes import ConvFashionModel
+from tffashion.keras_model_classes import ConvFashionModel
 
 tf.enable_eager_execution()
 
