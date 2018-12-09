@@ -101,20 +101,24 @@ def train(
             initial_step = model.global_step.eval()
             LOGGER.info('initial step = {}'.format(initial_step))
 
-            for b_num in range(initial_step, initial_step + n_steps):
-                _, loss_batch, encoded, summary_t = sess.run(
-                    [model.optimizer,
-                     model.loss,
-                     model.encoded,
-                     model.train_summary_op]
-                )
-                if (b_num + 1) % 50 == 0:
-                    LOGGER.info(
-                        ' Loss @step {}: {:5.1f}'.format(b_num, loss_batch)
+            try:
+                for b_num in range(initial_step, initial_step + n_steps):
+                    _, loss_batch, encoded, summary_t = sess.run(
+                        [model.optimizer,
+                         model.loss,
+                         model.encoded,
+                         model.train_summary_op]
                     )
-                    LOGGER.debug(str(encoded))
-                    saver.save(sess, chkpt_dir, b_num)
-                    writer.add_summary(summary_t, global_step=b_num)
+                    if (b_num + 1) % 50 == 0:
+                        LOGGER.info(
+                            ' Loss @step {}: {:5.1f}'.format(b_num, loss_batch)
+                        )
+                        LOGGER.debug(str(encoded))
+                        saver.save(sess, chkpt_dir, b_num)
+                        writer.add_summary(summary_t, global_step=b_num)
+
+            except tf.errors.OutOfRangeError:
+                LOGGER.info('Training stopped - queue is empty.')
 
             saver.save(sess, chkpt_dir, b_num)
             writer.add_summary(summary_t, global_step=b_num)
