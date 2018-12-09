@@ -30,6 +30,10 @@ class FashionHDF5Reader(object):
         if make_data_dict:
             self.data_dict['images'] = self._f['fashion/images'][:]
             self.data_dict['labels'] = self._f['fashion/labels'][:]
+            labels = self._f['fashion/labels'][:].reshape([-1])
+            oh_labels = np.zeros((labels.size, self._nlabels), dtype=np.uint8)
+            oh_labels[np.arange(labels.size), labels] = 1
+            self.data_dict['oh_labels'] = oh_labels
         return self._nevents
 
     def closef(self):

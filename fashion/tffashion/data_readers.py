@@ -13,9 +13,9 @@ def _make_numpy_data_from_hdf5(file_name):
     nevents = reader.openf(make_data_dict=True)
     features = reader.data_dict['images']
     features = np.moveaxis(features, 1, -1)
-    targets = reader.data_dict['labels']
+    labels = reader.data_dict['oh_labels']
     reader.closef()
-    return nevents, features, targets
+    return nevents, features, labels
 
 
 def _make_fashion_generator_fn(file_name, batch_size):
