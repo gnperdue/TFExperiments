@@ -23,9 +23,13 @@ class FashionHDF5Reader(object):
         self._nlabels = len(self.class_names)
         self._tofloat = tofloat
 
-    def openf(self):
+    def openf(self, make_data_dict=False):
         self._f = h5py.File(self._file, 'r')
         self._nevents = self._f['fashion/labels'].shape[0]
+        self.data_dict = {}
+        if make_data_dict:
+            self.data_dict['images'] = self._f['fashion/images'][:]
+            self.data_dict['labels'] = self._f['fashion/labels'][:]
         return self._nevents
 
     def closef(self):
