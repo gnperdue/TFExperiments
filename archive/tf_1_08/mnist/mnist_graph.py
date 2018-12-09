@@ -50,7 +50,7 @@ def main(
             sess.run(tf.global_variables_initializer())
             sess.run(tf.local_variables_initializer())
 
-            chkpt = tf.train.get_checkpoint_state(chkpt_dir)
+            chkpt = tf.train.get_checkpoint_state(os.path.dirname(chkpt_dir))
             if chkpt and chkpt.model_checkpoint_path:
                 saver.restore(sess, chkpt.model_checkpoint_path)
                 print('Restored session from {}'.format(chkpt_dir))
@@ -63,6 +63,7 @@ def main(
                 ])
                 print('iteration {}, loss = {}'.format(i, loss_val))
                 writer.add_summary(summary, global_step=gstep)
+                saver.save(sess, chkpt_dir, i)
 
         # with summary_writer.as_default():
         #     with tf.contrib.summary.always_record_summaries():
