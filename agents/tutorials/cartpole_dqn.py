@@ -16,7 +16,8 @@ from tf_agents.policies import random_tf_policy
 from tf_agents.replay_buffers import tf_uniform_replay_buffer
 from tf_agents.utils import common
 
-# tf.compat.v1.enable_v2_behavior()
+tf.compat.v1.enable_v2_behavior()
+tf.compat.v1.enable_resource_variables()
 
 
 env_name = 'CartPole-v0'
